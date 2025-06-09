@@ -62,39 +62,62 @@ async def get_random_male_name():
             print(f"An unexpected error occurred while fetching name: {e}")
             return None
 
+async def perform_nickname_change(guild_id: int, target_user_id: int, bot_instance: commands.Bot):
+    """
+    Attempts to change the nickname of a target user on a specific guild.
 
-@tasks.loop(minutes=2) # Adjust interval as needed
-async def check_twitch_live_status_task():
-    await bot.wait_until_ready() # Ensure bot is fully connected
-    print("Attempting daily nickname change (scheduled)...")
-@tasks.loop(time=dt_time(hour=6, minute=1, tzinfo=dt_timezone.utc))
-async def change_nickname_task():
-    await bot.wait_until_ready() # Ensure bot is fully connected
-    print("Attempting daily nickname change (scheduled)...")
+    Args:
+        guild_id: The ID of the guild.
+        target_user_id: The ID of the user whose nickname is to be changed.
+        bot_instance: The bot instance, used to get guild and member.
+
+    Returns:
+        A tuple (bool, str): (success, message_or_new_name)
+    """
+    print(f"Attempting perform_nickname_change for user {target_user_id} on guild {guild_id}")
     try:
-        guild = bot.get_guild(SERVER_ID)
+        guild = bot_instance.get_guild(guild_id)
         if not guild:
-            print(f"Error: Server with ID {SERVER_ID} not found. Check DISCORD_SERVER_ID environment variable.")
-            return
+            error_msg = f"Error: Server with ID {guild_id} not found. Check DISCORD_SERVER_ID environment variable."
+            print(error_msg)
+            return False, error_msg
 
-        member = guild.get_member(USER_ID)
+        member = guild.get_member(target_user_id)
         if not member:
-            print(f"Error: User with ID {USER_ID} not found on server {guild.name}. Check DISCORD_USER_ID environment variable.")
-            return
+            error_msg = f"Error: User with ID {target_user_id} not found on server {guild.name}. Check DISCORD_USER_ID environment variable."
+            print(error_msg)
+            return False, error_msg
 
-        new_name = await get_random_male_name()
+        new_name = await get_random_male_name() # Assumes get_random_male_name() is defined
         if not new_name:
-            print("Failed to get a new name from API. Skipping nickname change for this cycle.")
-            return
+            error_msg = "Failed to get a new name from API."
+            print(error_msg)
+            return False, error_msg
 
         await member.edit(nick=new_name)
-        print(f"Successfully changed nickname for {member.display_name} to {new_name} on server {guild.name} using API.")
+        success_msg = f"Successfully changed nickname for {member.display_name} to {new_name} on server {guild.name}."
+        print(success_msg)
+        return True, new_name # Or success_msg if more detail needed by caller
 
     except discord.Forbidden:
-        print(f"Error: Bot does not have permission to change nickname for user {USER_ID} on server {SERVER_ID}.")
-        print("Please ensure the bot has the 'Manage Nicknames' permission and its role is higher than the target user's role.")
+        error_msg = f"Error: Bot does not have permission to change nickname for user {target_user_id} on server {guild_id}. Ensure 'Manage Nicknames' permission and role hierarchy."
+        print(error_msg)
+        return False, error_msg
     except Exception as e:
-        print(f"An unexpected error occurred in change_nickname_task: {e}")
+        error_msg = f"An unexpected error occurred during nickname change: {e}"
+        print(error_msg)
+        return False, error_msg
+
+@tasks.loop(time=dt_time(hour=6, minute=1, tzinfo=dt_timezone.utc))
+async def change_nickname_task():
+    await bot.wait_until_ready()
+    print("Scheduled daily nickname change task running...")
+    # SERVER_ID and USER_ID are global, loaded from .env
+    success, message = await perform_nickname_change(SERVER_ID, USER_ID, bot)
+    if success:
+        print(f"Daily nickname change successful for user {USER_ID}: new name {message}")
+    else:
+        print(f"Daily nickname change failed for user {USER_ID}: {message}")
 
 
 @bot.event
@@ -102,9 +125,47 @@ async def on_ready():
     print(f'Bot logged in as {bot.user.name}')
     if not change_nickname_task.is_running():
         change_nickname_task.start()
-    # Removed Twitch task startup
     print("Daily name changer task started.")
 
+    # Sync slash commands
+    try:
+        # Sync global commands.
+        # For development, you might sync to a specific guild for instant updates:
+        # guild_id = os.getenv('DISCORD_TEST_GUILD_ID') # Example for specific guild sync
+        # if guild_id:
+        #    synced = await bot.tree.sync(guild=discord.Object(id=int(guild_id)))
+        #    print(f"Synced {len(synced)} slash command(s) to guild {guild_id}.")
+        # else:
+        synced = await bot.tree.sync()
+        print(f"Synced {len(synced)} slash command(s) globally.")
+    except Exception as e:
+        print(f"Failed to sync slash commands: {e}")
+
+@bot.tree.command(name="changename", description="Manually changes the configured user's nickname.")
+async def changename_slash_command(interaction: discord.Interaction):
+    """Manually triggers a nickname change for the configured user on the configured server."""
+
+    # Permission Check
+    if not interaction.user.guild_permissions.manage_nicknames:
+        await interaction.response.send_message("You do not have the required 'Manage Nicknames' permission to use this command.", ephemeral=True)
+        return
+
+    if not interaction.guild: # Should not happen for guild commands, but good check
+        await interaction.response.send_message("This command can only be used in a server.", ephemeral=True)
+        return
+
+    # Defer the response as perform_nickname_change involves API calls and might take a moment
+    await interaction.response.defer(ephemeral=False) # ephemeral=False so others can see the outcome message
+
+    # SERVER_ID and USER_ID are global, loaded from .env
+    success, result_message = await perform_nickname_change(SERVER_ID, USER_ID, bot)
+
+    if success:
+        # 'result_message' here is the new name
+        await interaction.followup.send(f"Successfully changed nickname for user ID {USER_ID} to **{result_message}**.")
+    else:
+        # 'result_message' here is the error message
+        await interaction.followup.send(f"Failed to change nickname for user ID {USER_ID}. Reason: {result_message}")
 
 if __name__ == '__main__':
     print("Bot is attempting to start...")

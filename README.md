@@ -189,6 +189,16 @@ For a quicker initial setup of the virtual environment and dependency installati
    c. **Crucially, ensure this bot's role is positioned higher in the role hierarchy than the role of the user whose nickname you want to change.** If the bot's role is lower, it won't have permission to change the nickname.
    d. Also, verify that the bot's role has the "Manage Nicknames" permission enabled. This should have been set during the bot invitation (Step 3), but it's good to double-check.
 
+## Bot Commands
+
+### Nickname Management
+
+*   **`/changename`**
+    *   **Description:** Manually triggers a nickname change for the user specified by `DISCORD_USER_ID` on the server specified by `DISCORD_SERVER_ID` in your `.env` configuration.
+    *   **Usage:** Type `/` in any channel the bot can see, and Discord will show a list of available slash commands. Select `changename` from the list and press Enter.
+    *   **Permissions:** To use this command, you must have the "Manage Nicknames" permission in the server. The bot will inform you if you lack this permission.
+    *   **Note:** This is in addition to the automatic daily nickname change. Slash commands may take up to an hour to appear in all servers after the bot is updated or restarted, unless synced to a specific development guild.
+
 ## Customization
 
 *   **Name Source:** The bot fetches random male names dynamically from the `randomuser.me` API for the daily name change feature.
