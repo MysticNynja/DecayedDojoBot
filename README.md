@@ -1,6 +1,24 @@
-# Discord Daily Name Changer Bot
+# Discord Daily Name Changer & Twitch Notifier Bot
 
-This bot changes a specified user's nickname on a Discord server to a random male name every 24 hours.
+This bot provides two main features:
+1.  **Daily Nickname Changer:** Automatically changes a specified user's nickname on a Discord server to a random male name every 24 hours.
+2.  **Twitch Live Notifications:** Notifies a Discord channel when followed Twitch streamers go live or change games.
+
+## Core Features
+
+### 1. Daily Nickname Changer
+
+This bot automatically changes a designated user's nickname on your Discord server every 24 hours.
+- It fetches a random male first name from an external API (`randomuser.me`).
+- **Configuration:** To use this feature, you **must** set the `DISCORD_SERVER_ID` and `DISCORD_USER_ID` environment variables (see Configuration section below). `DISCORD_SERVER_ID` is the ID of your server, and `DISCORD_USER_ID` is the ID of the user whose nickname will be changed.
+- The bot also needs the "Manage Nicknames" permission and its role must be higher than the target user's role on the server for this feature to work.
+
+### 2. Twitch Live Notifications
+
+Get notifications in specified Discord channels when your favorite Twitch streamers go live or change the game they are playing.
+- Uses the Twitch API to poll for live status.
+- **Configuration:** Requires `TWITCH_CLIENT_ID` and `TWITCH_CLIENT_SECRET` to be set in your environment variables.
+- **Commands:** Use `!followtwitch`, `!unfollowtwitch`, and `!listtwitch` to manage followed streamers (see Bot Commands section).
 
 ## Setup Instructions
 
@@ -63,9 +81,16 @@ This bot changes a specified user's nickname on a Discord server to a random mal
    **Create a `.env` file with the following content, replacing the placeholder values with your actual credentials:**
 
    ```env
+   # --- Discord Bot General ---
    DISCORD_BOT_TOKEN=your_actual_discord_bot_token
+
+   # --- Daily Nickname Changer Feature ---
+   # ID of the Discord server where nickname changes will occur
    DISCORD_SERVER_ID=your_discord_server_id
-   DISCORD_USER_ID=your_discord_user_id_for_name_change
+   # ID of the user whose nickname will be automatically changed daily
+   DISCORD_USER_ID=the_user_id_whose_nickname_will_be_changed
+
+   # --- Twitch Live Notifications Feature ---
    TWITCH_CLIENT_ID=your_twitch_app_client_id
    TWITCH_CLIENT_SECRET=your_twitch_app_client_secret
    ```
@@ -154,18 +179,20 @@ This bot changes a specified user's nickname on a Discord server to a random mal
    d. Also, verify that the bot's role has the "Manage Nicknames" permission enabled. This should have been set during the bot invitation (Step 2b), but it's good to double-check.
    e. For Twitch notifications, ensure the bot has "Send Messages" and "Embed Links" permissions in the designated notification channels.
 
-## Bot Commands
-The bot responds to the following commands:
+## Bot Commands (Twitch Notifications)
+The bot responds to the following commands to manage Twitch live notifications:
 
 *   `!followtwitch <twitch_username> [#discord_channel (optional)]`
     *   Follows a Twitch streamer for live notifications.
-    *   Requires "Manage Guild" permission.
-    *   If `#discord_channel` is omitted, notifications go to the current channel.
+    *   Requires "Manage Guild" permission on the server.
+    *   If `#discord_channel` is omitted, notifications go to the channel where the command was used.
 *   `!unfollowtwitch <twitch_username>`
     *   Unfollows a Twitch streamer.
-    *   Requires "Manage Guild" permission.
+    *   Requires "Manage Guild" permission on the server.
 *   `!listtwitch`
-    *   Lists all currently followed Twitch streamers and their notification channels.
+    *   Lists all currently followed Twitch streamers and their designated notification channels.
+
+Note: The Daily Nickname Changer feature is automatic and does not have user-facing commands.
 
 ## Customization
 

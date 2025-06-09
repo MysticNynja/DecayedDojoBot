@@ -4,7 +4,6 @@ import asyncio
 import aiohttp
 import os
 import sys
-import random # Keep for now, might remove if no other random choice needed
 import time
 import json
 from dotenv import load_dotenv # New import
@@ -503,7 +502,7 @@ async def list_twitch(ctx):
     embed.description = full_description
     await ctx.send(embed=embed)
 
-# It's good practice to run the bot token from an environment variable or a config file in a real application.
-# User should uncomment the following line to run the bot after setting environment variables.
-# bot.run(BOT_TOKEN)
-# print("Bot is ready to be run. Ensure DISCORD_BOT_TOKEN, DISCORD_SERVER_ID, DISCORD_USER_ID, TWITCH_CLIENT_ID, and TWITCH_CLIENT_SECRET environment variables are set and uncomment the bot.run() line.")
+if __name__ == '__main__':
+    print("Bot is attempting to start...")
+    print("Ensure DISCORD_BOT_TOKEN, DISCORD_SERVER_ID, DISCORD_USER_ID, TWITCH_CLIENT_ID, and TWITCH_CLIENT_SECRET environment variables are correctly set in your .env file or system environment.")
+    bot.run(BOT_TOKEN)
