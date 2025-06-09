@@ -8,10 +8,11 @@ This bot provides two main features:
 
 ### 1. Daily Nickname Changer
 
-This bot automatically changes a designated user's nickname on your Discord server every 24 hours.
+This bot automatically changes a designated user's nickname on your Discord server daily at **06:01 UTC**.
 - It fetches a random male first name from an external API (`randomuser.me`).
 - **Configuration:** To use this feature, you **must** set the `DISCORD_SERVER_ID` and `DISCORD_USER_ID` environment variables (see Configuration section below). `DISCORD_SERVER_ID` is the ID of your server, and `DISCORD_USER_ID` is the ID of the user whose nickname will be changed.
 - The bot also needs the "Manage Nicknames" permission and its role must be higher than the target user's role on the server for this feature to work.
+- **Schedule Timezone:** The name change is scheduled for 06:01 UTC. Please note that this is a fixed UTC time and **will not automatically adjust for local Daylight Saving Time (DST)** changes. If your region observes DST, the local time the bot performs this action will shift by an hour during DST periods. You may need to manually adjust the `hour` in the `name_changer_bot.py` script if a consistent local time is critical year-round.
 
 ### 2. Twitch Live Notifications
 
@@ -30,9 +31,9 @@ Get notifications in specified Discord channels when your favorite Twitch stream
    d. Navigate to the "**Bot**" tab on the left menu.
    e. Click "**Add Bot**" and confirm by clicking "**Yes, do it!**".
    f. Under the "TOKEN" section, click "**Copy**". **This is your bot token. Keep it secret!**
-   g. **Enable Privileged Gateway Intents:**
-      - Scroll down on the "Bot" page to the "Privileged Gateway Intents" section.
-      - Enable "**Server Members Intent**". This is crucial for the bot to find users and change nicknames.
+   g. **Enable Privileged Gateway Intents:** On the "Bot" page in the Discord Developer Portal, scroll down to the "Privileged Gateway Intents" section. You need to enable the following intents:
+      - Enable "**Server Members Intent**". This is crucial for the bot to find users (e.g., for the nickname changing feature) and to generally function correctly in servers.
+      - Enable "**Message Content Intent**". This allows the bot to receive message content, which is important for processing commands (like `!followtwitch`). Without this, commands might not work.
 
 ### 1.b. Create a Twitch Application (for Streamer Notifications)
 
@@ -198,9 +199,9 @@ Note: The Daily Nickname Changer feature is automatic and does not have user-fac
 
 *   **Name Source (Daily Name Changer):** The bot fetches random male names dynamically from the `randomuser.me` API for the daily name change feature.
 *   **Task Intervals:**
-    *   Daily Name Change: Runs once every 24 hours (`@tasks.loop(hours=24)`).
+    *   Daily Name Change: Runs daily at 06:01 UTC (see feature description above).
     *   Twitch Status Polling: Runs every 2 minutes (`@tasks.loop(minutes=2)`).
-    *   These can be adjusted in `name_changer_bot.py` if needed (be mindful of API rate limits).
+    *   The polling interval can be adjusted in `name_changer_bot.py` if needed (be mindful of API rate limits).
 
 ## Troubleshooting
 

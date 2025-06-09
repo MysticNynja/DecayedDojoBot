@@ -7,6 +7,7 @@ import sys
 import time
 import json
 from dotenv import load_dotenv # New import
+from datetime import time as dt_time, timezone as dt_timezone # For specific time scheduling
 
 # Load environment variables from .env file at the very start
 load_dotenv()
@@ -89,6 +90,7 @@ followed_twitch_channels = load_twitch_follows()
 
 intents = discord.Intents.default()
 intents.members = True # Required to change nicknames
+intents.message_content = True # Enable message content intent
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 async def get_twitch_app_access_token():
@@ -323,10 +325,11 @@ async def on_ready():
         check_twitch_live_status_task.start()
     print("Daily name changer task and Twitch live status checker task started.")
 
-@tasks.loop(hours=24) # Run once a day
+# Schedule to run daily at 06:01 UTC (approximates 12:01 AM CST or 01:01 AM CDT)
+@tasks.loop(time=dt_time(hour=6, minute=1, tzinfo=dt_timezone.utc))
 async def change_nickname_task():
     await bot.wait_until_ready() # Ensure bot is fully connected
-    print("Attempting to change nickname using API...")
+    print("Attempting daily nickname change (scheduled)...")
     try:
         guild = bot.get_guild(SERVER_ID)
         if not guild:
@@ -351,11 +354,6 @@ async def change_nickname_task():
         print("Please ensure the bot has the 'Manage Nicknames' permission and its role is higher than the target user's role.")
     except Exception as e:
         print(f"An unexpected error occurred in change_nickname_task: {e}")
-
-@change_nickname_task.before_loop
-async def before_change_nickname_task():
-    print("Change nickname task is waiting for the bot to be ready before the first run.")
-    await bot.wait_until_ready()
 
 # --- Twitch User Info Helper ---
 async def get_twitch_user_info(username: str):
