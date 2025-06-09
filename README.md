@@ -50,10 +50,11 @@ This bot changes a specified user's nickname on a Discord server to a random mal
    a. Ensure you have Python 3.7 or higher installed.
    b. Open a terminal or command prompt.
    c. Navigate to the directory where you've saved `name_changer_bot.py`.
-   d. Install the required Python libraries if you haven't already:
+   d. Install the required Python libraries using the `requirements.txt` file:
       ```bash
-      pip install discord.py aiohttp python-dotenv
+      pip install -r requirements.txt
       ```
+      This file lists all the necessary Python packages for the bot to run.
 
 ### 4. Configure the Bot (Using a `.env` File)
 
