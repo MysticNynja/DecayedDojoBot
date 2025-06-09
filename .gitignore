@@ -1,0 +1,17 @@
+# Environment variables - very important to keep out of version control
+.env
+*.env
+
+# Twitch follows configuration - may contain user/channel specific data
+twitch_follows.json
+
+# Python cache files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# IDE / Editor specific files
+.vscode/
+.idea/
+*.swp
+*.swo
