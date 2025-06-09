@@ -2,9 +2,6 @@
 .env
 *.env
 
-# Twitch follows configuration - may contain user/channel specific data
-twitch_follows.json
-
 # Python cache files
 __pycache__/
 *.py[cod]
