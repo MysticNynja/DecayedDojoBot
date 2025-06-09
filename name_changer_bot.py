@@ -1,15 +1,38 @@
 import discord
 from discord.ext import tasks, commands
 import asyncio
-import aiohttp # Added
+import aiohttp
+import os # Added
+import sys # Added for sys.exit()
 import random # Keep for now, might remove if no other random choice needed
 
-# Configuration - Replace with your actual values
-BOT_TOKEN = 'YOUR_BOT_TOKEN_HERE'  # User will replace this
-SERVER_ID = 548624354213363733
-USER_ID = 133358760453210112
+# Configuration from environment variables
+BOT_TOKEN = os.getenv('DISCORD_BOT_TOKEN')
+SERVER_ID_STR = os.getenv('DISCORD_SERVER_ID')
+USER_ID_STR = os.getenv('DISCORD_USER_ID')
 
-# MALE_NAMES list is now removed
+# Validate configuration
+if not BOT_TOKEN:
+    print("Error: DISCORD_BOT_TOKEN environment variable not set.", file=sys.stderr)
+    sys.exit(1)
+if not SERVER_ID_STR:
+    print("Error: DISCORD_SERVER_ID environment variable not set.", file=sys.stderr)
+    sys.exit(1)
+if not USER_ID_STR:
+    print("Error: DISCORD_USER_ID environment variable not set.", file=sys.stderr)
+    sys.exit(1)
+
+try:
+    SERVER_ID = int(SERVER_ID_STR)
+except ValueError:
+    print("Error: DISCORD_SERVER_ID environment variable is not a valid integer.", file=sys.stderr)
+    sys.exit(1)
+
+try:
+    USER_ID = int(USER_ID_STR)
+except ValueError:
+    print("Error: DISCORD_USER_ID environment variable is not a valid integer.", file=sys.stderr)
+    sys.exit(1)
 
 intents = discord.Intents.default()
 intents.members = True # Required to change nicknames
@@ -47,19 +70,17 @@ async def change_nickname_task():
     try:
         guild = bot.get_guild(SERVER_ID)
         if not guild:
-            print(f"Error: Server with ID {SERVER_ID} not found.")
+            print(f"Error: Server with ID {SERVER_ID} not found. Check DISCORD_SERVER_ID environment variable.")
             return
 
         member = guild.get_member(USER_ID)
         if not member:
-            print(f"Error: User with ID {USER_ID} not found on server {guild.name}.")
+            print(f"Error: User with ID {USER_ID} not found on server {guild.name}. Check DISCORD_USER_ID environment variable.")
             return
 
         new_name = await get_random_male_name()
         if not new_name:
             print("Failed to get a new name from API. Skipping nickname change for this cycle.")
-            # Optionally, you could implement a fallback to a short static list here
-            # or retry after a delay, but for now, we'll just skip.
             return
 
         await member.edit(nick=new_name)
@@ -76,5 +97,7 @@ async def before_change_nickname_task():
     print("Change nickname task is waiting for the bot to be ready before the first run.")
     await bot.wait_until_ready()
 
+# It's good practice to run the bot token from an environment variable or a config file in a real application.
+# User should uncomment the following line to run the bot after setting environment variables.
 # bot.run(BOT_TOKEN)
-# print("Bot is ready to be run. Please replace 'YOUR_BOT_TOKEN_HERE' with your actual bot token and uncomment the bot.run() line.")
+# print("Bot is ready to be run. Ensure DISCORD_BOT_TOKEN, DISCORD_SERVER_ID, and DISCORD_USER_ID environment variables are set and uncomment the bot.run() line.")

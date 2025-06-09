@@ -38,32 +38,64 @@ This bot changes a specified user's nickname on a Discord server to a random mal
       pip install discord.py aiohttp
       ```
 
-### 4. Configure the Bot (`name_changer_bot.py`)
+### 4. Configure the Bot (Using Environment Variables)
 
-   a. Open the `name_changer_bot.py` file in a text editor.
-   b. **Replace `'YOUR_BOT_TOKEN_HERE'` with the bot token you copied in Step 1f.**
-      ```python
-      BOT_TOKEN = 'YOUR_ACTUAL_BOT_TOKEN'
-      ```
-   c. **Verify Server and User IDs:**
-      The `SERVER_ID` and `USER_ID` are currently hardcoded in the script. If you need to change them, update these lines:
-      ```python
-      SERVER_ID = 548624354213363733 # Replace with your Server ID if different
-      USER_ID = 133358760453210112   # Replace with the target User ID if different
-      ```
-      To get these IDs:
-      - Enable Developer Mode in Discord: User Settings -> Advanced -> Developer Mode (toggle on).
-      - To get Server ID: Right-click on your server icon -> Copy ID.
-      - To get User ID: Right-click on the target user's name -> Copy ID.
+   Before running the bot, you need to set the following environment variables. These tell the bot which token to use, which server to operate on, and which user's nickname to change.
+
+   *   `DISCORD_BOT_TOKEN`: Your Discord bot token (obtained in Step 1f).
+   *   `DISCORD_SERVER_ID`: The ID of your Discord server.
+   *   `DISCORD_USER_ID`: The ID of the user whose nickname will be changed.
+
+   **How to get Server and User IDs:**
+   - Enable Developer Mode in Discord: User Settings -> Advanced -> Developer Mode (toggle on).
+   - To get Server ID: Right-click on your server icon -> Copy ID.
+   - To get User ID: Right-click on the target user's name -> Copy ID.
+
+   **Setting Environment Variables:**
+
+   The method for setting environment variables depends on your operating system and how you plan to run the bot.
+
+   **For Linux/macOS (in terminal for the current session):**
+   ```bash
+   export DISCORD_BOT_TOKEN="your_actual_bot_token"
+   export DISCORD_SERVER_ID="your_server_id"
+   export DISCORD_USER_ID="your_user_id"
+   ```
+   To make them permanent, add these lines to your shell's profile file (e.g., `~/.bashrc`, `~/.zshrc`).
+
+   **For Windows (in Command Prompt for the current session):**
+   ```cmd
+   set DISCORD_BOT_TOKEN=your_actual_bot_token
+   set DISCORD_SERVER_ID=your_server_id
+   set DISCORD_USER_ID=your_user_id
+   ```
+   **For Windows (in PowerShell for the current session):**
+   ```powershell
+   $env:DISCORD_BOT_TOKEN="your_actual_bot_token"
+   $env:DISCORD_SERVER_ID="your_server_id"
+   $env:DISCORD_USER_ID="your_user_id"
+   ```
+   To set them permanently on Windows, search for "environment variables" in the Start menu to edit system environment variables.
+
+   **Using a `.env` file (Recommended for development):**
+   Alternatively, you can create a file named `.env` in the same directory as `name_changer_bot.py` with the following content:
+   ```
+   DISCORD_BOT_TOKEN=your_actual_bot_token
+   DISCORD_SERVER_ID=your_server_id
+   DISCORD_USER_ID=your_user_id
+   ```
+   Then, you would typically modify the script to load these using a library like `python-dotenv`. *Note: The current script does not automatically load `.env` files. This is an alternative setup method you might choose to implement.*
+
+   Ensure these variables are set in the environment where the bot script will be executed. The script will print error messages and exit if these are not found.
 
 ### 5. Run the Bot
 
-   a. Save the changes to `name_changer_bot.py`.
+   a. Ensure the environment variables from Step 4 are set in your current terminal session.
    b. In your terminal or command prompt (still in the bot's directory), run the script:
       ```bash
       python name_changer_bot.py
       ```
-   c. If everything is set up correctly, you should see a message like `Bot logged in as YourBotName` in the console.
+   c. If everything is set up correctly (including environment variables), you should see a message like `Bot logged in as YourBotName` in the console.
    d. The bot will then attempt to change the nickname for the specified user and will try again every 24 hours.
 
 ### 6. Ensure Bot Permissions on Discord
