@@ -40,7 +40,7 @@ except ValueError:
 
 intents = discord.Intents.default()
 intents.members = True # Required to change nicknames
-intents.message_content = True # Enable message content intent
+intents.message_content = True  # Enable message content intent
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 async def get_random_male_name():
@@ -122,7 +122,10 @@ async def change_nickname_task():
 
 @bot.event
 async def on_ready():
-    print(f'Bot logged in as {bot.user.name}')
+    if bot.user is not None:
+        print(f'Bot logged in as {bot.user.name}')
+    else:
+        print('Bot logged in, but user information is not available yet.')
     if not change_nickname_task.is_running():
         change_nickname_task.start()
     print("Daily name changer task started.")
@@ -146,7 +149,7 @@ async def changename_slash_command(interaction: discord.Interaction):
     """Manually triggers a nickname change for the configured user on the configured server."""
 
     # Permission Check
-    if not interaction.user.guild_permissions.manage_nicknames:
+    if not isinstance(interaction.user, discord.Member) or not interaction.user.guild_permissions.manage_nicknames:
         await interaction.response.send_message("You do not have the required 'Manage Nicknames' permission to use this command.", ephemeral=True)
         return
 

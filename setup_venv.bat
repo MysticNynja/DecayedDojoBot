@@ -1,26 +1,32 @@
 @echo off
-echo Checking for Python...
+echo Checking for Python launcher (py.exe)...
 
-python --version >nul 2>&1
-if errorlevel 1 (
-    echo Python not found in PATH. Please install Python 3 (python.org) and ensure it's added to your PATH.
-    goto :eof
+where py >nul 2>&1
+if %errorlevel% neq 0 (
+    echo Python launcher (py.exe) not found in PATH.
+    echo Please ensure Python is installed correctly from python.org and the launcher is available.
+    echo Alternatively, you can try changing 'py' back to 'python' in this script if 'python' works for you and the issue was different.
+    pause
+    exit /b 1
 )
 
-echo Found Python.
-echo Creating virtual environment in .\.venv\ ...
-python -m venv .venv
-if errorlevel 1 (
-    echo Failed to create virtual environment. Make sure 'venv' module is available.
-    goto :eof
+echo Found Python launcher.
+echo Creating virtual environment in .\.venv\ using 'py -m venv .venv' ...
+py -m venv .venv
+if %errorlevel% neq 0 (
+    echo Failed to create virtual environment using 'py -m venv .venv'.
+    echo Make sure 'venv' module is available for your Python installation (usually included).
+    pause
+    exit /b 1
 )
 
 echo Virtual environment created.
 echo Installing dependencies from requirements.txt...
 call .\.venv\Scripts\pip install -r requirements.txt
-if errorlevel 1 (
+if %errorlevel% neq 0 (
     echo Failed to install requirements. Check requirements.txt and your internet connection.
-    goto :eof
+    pause
+    exit /b 1
 )
 
 echo Dependencies installed successfully.
@@ -30,7 +36,8 @@ echo To activate the virtual environment, run the following command in this term
 echo   .\.venv\Scripts\activate
 echo.
 echo After activation, you can run the bot using:
-echo   python name_changer_bot.py
+echo   py name_changer_bot.py
+echo (Or, to be very specific after activating: .\.venv\Scripts\python.exe name_changer_bot.py)
 echo.
 pause
-:eof
+exit /b 0
