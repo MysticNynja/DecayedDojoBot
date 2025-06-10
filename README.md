@@ -1,6 +1,6 @@
-# Discord Daily Nickname Changer Bot
+# DecayeDojo Bot
 
-This Discord bot automatically changes a specified user's nickname on your Discord server daily at a set UTC time.
+Welcome to the **DecayeDojo Bot**! This bot is designed to automatically change a specific user's nickname on your Discord server daily at a configured time (06:01 UTC). It also features a `/changename` slash command for manual nickname changes of the same configured user.
 
 ## Core Feature: Daily Nickname Changer
 

@@ -162,10 +162,10 @@ async def changename_slash_command(interaction: discord.Interaction):
 
     if success:
         # 'result_message' here is the new name
-        await interaction.followup.send(f"Successfully changed nickname for user ID {USER_ID} to **{result_message}**.")
+        await interaction.followup.send(f"Successfully changed nickname for user ID {USER_ID} to **{result_message}**.", ephemeral=True)
     else:
         # 'result_message' here is the error message
-        await interaction.followup.send(f"Failed to change nickname for user ID {USER_ID}. Reason: {result_message}")
+        await interaction.followup.send(f"Failed to change nickname for user ID {USER_ID}. Reason: {result_message}", ephemeral=True)
 
 if __name__ == '__main__':
     print("Bot is attempting to start...")
