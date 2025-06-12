@@ -401,7 +401,7 @@ async def check_twitch_streams_task():
                                     game_info = await get_game_info(current_game_id, headers)
                                     
                                     # Store stream start time and thumbnail URL
-                                    details['stream_start_timestamp'] = datetime.datetime.now().timestamp()
+                                    details['stream_start_timestamp'] = datetime.datetime.now(datetime.timezone.utc).timestamp()
                                     details['last_thumbnail_url'] = stream_data.get('thumbnail_url')  # Store thumbnail URL
                                     
                                     # Create the new embed
@@ -457,7 +457,13 @@ async def check_twitch_streams_task():
                                         )
                                         view.add_item(button)
 
-                                        message_content = f"{stream_data.get('title', 'Live on Twitch!')} @everyone"
+                                        custom_message = details.get('custom_live_message')
+                                        if custom_message: # Check if not None and not empty
+                                            text_to_use = custom_message
+                                        else:
+                                            text_to_use = stream_data.get('title', 'Live on Twitch!')
+
+                                        message_content = f"{text_to_use} @everyone"
                                         message = await discord_channel.send(content=message_content, embed=stream_embed, view=view)
                                         details['last_message_id'] = message.id
                                         print(f"Sent live notification for {login_name}")
@@ -469,8 +475,9 @@ async def check_twitch_streams_task():
                                 details['last_stream_id'] = stream_data.get('id')
                                 details['last_game_name'] = current_game_name
                                 details['last_game_id'] = current_game_id
-                                details['stream_start_time'] = time.time()
-                                details['stream_start_timestamp'] = datetime.datetime.now().timestamp()  # Store start time as timestamp
+                                # Ensure both time trackers use UTC epoch timestamps
+                                details['stream_start_time'] = datetime.datetime.now(datetime.timezone.utc).timestamp()
+                                details['stream_start_timestamp'] = datetime.datetime.now(datetime.timezone.utc).timestamp()
                                 save_json_data(guild_stream_registrations, STREAM_REGISTRATIONS_FILE, "stream registrations")
                             
 
@@ -480,11 +487,21 @@ async def check_twitch_streams_task():
                                 
                                 # Calculate stream duration if we have the start time
                                 duration_text = ""
-                                if details.get('stream_start_timestamp'):
-                                    duration = time.time() - details.get('stream_start_timestamp')
+                                start_ts_for_duration = details.get('stream_start_timestamp')
+                                current_ts_for_duration = time.time() # This is a local epoch time
+                                print(f"DEBUG: Calculating duration for {login_name}. Start_Timestamp (UTC epoch): {start_ts_for_duration}, Current_Time (local epoch): {current_ts_for_duration}")
+                                if start_ts_for_duration is not None:
+                                    # It's important that both timestamps are of the same nature (both UTC epoch or both local epoch)
+                                    # Since start_ts_for_duration is now UTC epoch, current_ts_for_duration should also be UTC epoch for direct subtraction.
+                                    current_utc_ts_for_duration = datetime.datetime.now(datetime.timezone.utc).timestamp()
+                                    print(f"DEBUG: Using Current_Time (UTC epoch) for calculation: {current_utc_ts_for_duration}")
+                                    duration = current_utc_ts_for_duration - start_ts_for_duration
+                                    print(f"DEBUG: Raw duration value: {duration}")
                                     hours = int(duration // 3600)
                                     minutes = int((duration % 3600) // 60)
                                     duration_text = f"Stream Duration: **{hours}h {minutes}m**"
+                                else:
+                                    print(f"DEBUG: Start_Timestamp is None for {login_name}, duration_text will be empty.")
                                 
                                 # Get user profile for thumbnail
                                 user_profile = await get_twitch_user_profile(twitch_user_id, headers)
@@ -793,6 +810,51 @@ async def twitch_notify_list(interaction: discord.Interaction):
              for tid, d in guild_stream_registrations[gid_str].items()]
     embed.description = "\n".join(lines) if lines else "No channels registered."
     await interaction.response.send_message(embed=embed, ephemeral=True)
+
+@twitch_user_group.command(name="setlivenotification", description="Sets or updates your custom go-live notification message for the bot.")
+@app_commands.describe(
+    twitch_username="Your Twitch username (login name).",
+    message="Your custom go-live message (max 140 characters)."
+)
+async def twitch_set_live_notification(interaction: discord.Interaction, twitch_username: str, message: str):
+    if not interaction.guild_id:
+        await interaction.response.send_message("This command can only be used in a server.", ephemeral=True)
+        return
+    if not TWITCH_CLIENT_ID or not TWITCH_CLIENT_SECRET:
+        await interaction.response.send_message("Twitch features are not configured on this bot.", ephemeral=True)
+        return
+
+    await interaction.response.defer(ephemeral=True)
+
+    guild_id_str = str(interaction.guild_id)
+    twitch_username_input = twitch_username.lower()
+
+    if guild_id_str not in guild_stream_registrations:
+        await interaction.followup.send(f"`{twitch_username}` not found in registrations for this server. Use `/twitch notifyadd` first.")
+        return
+
+    found_twitch_user_id = None
+    user_details = None
+    for tid, details_val in guild_stream_registrations[guild_id_str].items():
+        if details_val.get('login_name','').lower() == twitch_username_input:
+            found_twitch_user_id = tid
+            user_details = details_val
+            break
+
+    if not found_twitch_user_id or not user_details:
+        await interaction.followup.send(f"`{twitch_username}` not found in registrations for this server. Use `/twitch notifyadd` first.")
+        return
+
+    if len(message) > 140:
+        await interaction.followup.send("Your message is too long (max 140 characters).")
+        return
+
+    guild_stream_registrations[guild_id_str][found_twitch_user_id]['custom_live_message'] = message
+    save_json_data(guild_stream_registrations, STREAM_REGISTRATIONS_FILE, "stream registrations")
+
+    display_name = user_details.get('display_name', twitch_username)
+    await interaction.followup.send(f"Custom live notification message updated for `{display_name}`.")
+
 
 # Add this at the very bottom of the file
 if __name__ == "__main__":
