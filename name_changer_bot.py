@@ -421,22 +421,26 @@ async def check_twitch_streams_task():
                                         timestamp=datetime.datetime.now(datetime.timezone.utc)
                                     )
 
-                                    # Author
+                                    # Author (Streamer Info)
+                                    author_icon_url = None
+                                    if user_profile and user_profile.get('profile_image_url'):
+                                        author_icon_url = user_profile['profile_image_url']
                                     stream_embed.set_author(
-                                        name="Decayed-Dojo-Bot",
+                                        name=details.get('display_name', login_name),
                                         url=embed_url,
-                                        icon_url="https://images-ext-1.discordapp.net/external/sjrFfAjQl0sgkeSmFGQY6KLtJ7T0hPRz3ATvo56dosM/https/static-cdn.jtvnw.net/jtv_user_pictures/fe62bc11-e519-41a2-a5ca-bf9038548794-profile_image-300x300.png?format=webp&quality=lossless"
+                                        icon_url=author_icon_url
                                     )
 
-                                    # Image (Game Box Art)
+                                    # Thumbnail (Game Box Art)
                                     if game_info and game_info.get('box_art_url'):
-                                        box_art_url = game_info['box_art_url'].replace('{width}', '400').replace('{height}', '225')
-                                        stream_embed.set_image(url=box_art_url)
+                                        box_art_url = game_info['box_art_url'].replace('{width}', '285').replace('{height}', '380')
+                                        stream_embed.set_thumbnail(url=box_art_url)
                                     
-                                    # Thumbnail (Streamer Profile Picture)
-                                    if user_profile and user_profile.get('profile_image_url'):
-                                        stream_embed.set_thumbnail(url=user_profile['profile_image_url'])
-                                    
+                                    # Image (Stream Preview)
+                                    if stream_data.get('thumbnail_url'):
+                                        stream_preview_url = stream_data['thumbnail_url'].replace('{width}', '400').replace('{height}', '225')
+                                        stream_embed.set_image(url=stream_preview_url)
+
                                     # Footer
                                     stream_embed.set_footer(
                                         text="decayeddojo.com",
@@ -494,11 +498,14 @@ async def check_twitch_streams_task():
                                     timestamp=datetime.datetime.now(datetime.timezone.utc)
                                 )
 
-                                # Author
+                                # Author (Streamer Info)
+                                author_icon_url = None
+                                if user_profile and user_profile.get('profile_image_url'):
+                                    author_icon_url = user_profile['profile_image_url']
                                 offline_embed.set_author(
-                                    name="Decayed-Dojo-Bot",
+                                    name=details.get('display_name', login_name),
                                     url=embed_url,
-                                    icon_url="https://images-ext-1.discordapp.net/external/sjrFfAjQl0sgkeSmFGQY6KLtJ7T0hPRz3ATvo56dosM/https/static-cdn.jtvnw.net/jtv_user_pictures/fe62bc11-e519-41a2-a5ca-bf9038548794-profile_image-300x300.png?format=webp&quality=lossless"
+                                    icon_url=author_icon_url
                                 )
 
                                 # Thumbnail (Streamer Profile Picture)
