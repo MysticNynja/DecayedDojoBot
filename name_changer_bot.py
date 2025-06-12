@@ -448,7 +448,16 @@ async def check_twitch_streams_task():
                                     )
 
                                     try:
-                                        message = await discord_channel.send(content="@everyone", embed=stream_embed)
+                                        # Create View and Button
+                                        view = discord.ui.View()
+                                        button = discord.ui.Button(
+                                            label="Watch Stream",
+                                            style=discord.ButtonStyle.link,
+                                            url=embed_url # embed_url is f"https://www.twitch.tv/{login_name}"
+                                        )
+                                        view.add_item(button)
+
+                                        message = await discord_channel.send(content="@everyone", embed=stream_embed, view=view)
                                         details['last_message_id'] = message.id
                                         print(f"Sent live notification for {login_name}")
                                     except Exception as e:
@@ -508,10 +517,19 @@ async def check_twitch_streams_task():
                                     icon_url=author_icon_url
                                 )
 
-                                # Thumbnail (Streamer Profile Picture)
-                                if user_profile and user_profile.get('profile_image_url'):
-                                    offline_embed.set_thumbnail(url=user_profile['profile_image_url'])
-                                
+                                # Thumbnail (Last Game Box Art)
+                                game_info = None # Ensure game_info is defined before conditional assignment
+                                if details.get('last_game_id'):
+                                    game_info = await get_game_info(details['last_game_id'], headers)
+                                if game_info and game_info.get('box_art_url'):
+                                    box_art_url = game_info['box_art_url'].replace('{width}', '285').replace('{height}', '380')
+                                    offline_embed.set_thumbnail(url=box_art_url)
+                                else: # Fallback if no game box art (e.g. game_id was null, or API failed)
+                                    offline_embed.set_thumbnail(url=None) # Or a default placeholder
+
+                                # Ensure no main image is set for offline embed
+                                offline_embed.set_image(url=None)
+
                                 # Footer
                                 offline_embed.set_footer(
                                     text="decayeddojo.com",
