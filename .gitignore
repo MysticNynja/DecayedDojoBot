@@ -2,6 +2,12 @@
 .env
 *.env
 
+# Server-specific settings file
+server_settings.json
+
+# User-defined stream registrations for Twitch notifications
+stream_registrations.json
+
 # Python cache files
 __pycache__/
 *.py[cod]

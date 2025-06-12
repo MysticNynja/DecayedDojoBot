@@ -1,8 +1,12 @@
 # DecayeDojo Bot
 
-Welcome to the **DecayeDojo Bot**! This bot is designed to automatically change a specific user's nickname on your Discord server daily at a configured time (06:01 UTC). It also features a `/changename` slash command for manual nickname changes of the same configured user.
+Welcome to the **DecayeDojo Bot**! This bot primarily offers two features:
+1.  **Daily Nickname Changer:** Automatically changes a specific user's nickname on your Discord server daily.
+2.  **Twitch Live Notifications (Optional):** Monitors registered Twitch channels and sends notifications to a designated channel in your server when they go live or change games.
 
-## Core Feature: Daily Nickname Changer
+## Core Features
+
+### 1. Daily Nickname Changer
 
 This bot automatically changes a designated user's nickname on your Discord server daily at **06:01 UTC**.
 - It fetches a random male first name from an external API (`randomuser.me`).
@@ -10,19 +14,45 @@ This bot automatically changes a designated user's nickname on your Discord serv
 - The bot also needs the "Manage Nicknames" permission and its role must be higher than the target user's role on the server for this feature to work.
 - **Schedule Timezone:** The name change is scheduled for 06:01 UTC. Please note that this is a fixed UTC time and **will not automatically adjust for local Daylight Saving Time (DST)** changes. If your region observes DST, the local time the bot performs this action will shift by an hour during DST periods. You may need to manually adjust the `hour` in the `name_changer_bot.py` script if a consistent local time is critical year-round.
 
+### 2. Twitch Live Notifications (Optional)
+
+If configured by the bot owner (with Twitch API keys) and a server admin (with a notification channel), this bot can monitor registered Twitch channels.
+- When a registered Twitch channel goes live, a notification is sent to the server's designated Twitch updates channel.
+- Game changes during a live stream also trigger a notification.
+- Server admins use `/twitchadmin set_channel` to define where these notifications appear.
+- Server members can use `/twitch notify add <your_twitch_username>` to register their channel for monitoring on that server.
+- **Setup Required:** This feature needs `TWITCH_CLIENT_ID` and `TWITCH_CLIENT_SECRET` to be set in the `.env` file by the bot owner (see Step 1.b and Configuration section). If these are not set, Twitch features will be disabled.
+
 ## Setup Instructions
 
-### 1. Create a Discord Bot Application and Get a Token
+### 1.a. Create a Discord Bot Application and Get a Token
 
    a. Go to the [Discord Developer Portal](https://discord.com/developers/applications).
    b. Click on "**New Application**" (top right).
-   c. Give your application a name (e.g., "NameChangerBot") and click "**Create**".
+   c. Give your application a name (e.g., "DecayeDojoBot") and click "**Create**".
    d. Navigate to the "**Bot**" tab on the left menu.
    e. Click "**Add Bot**" and confirm by clicking "**Yes, do it!**".
    f. Under the "TOKEN" section, click "**Copy**". **This is your bot token. Keep it secret!**
    g. **Enable Privileged Gateway Intents:** On the "Bot" page in the Discord Developer Portal, scroll down to the "Privileged Gateway Intents" section. You need to enable the following intents:
       - Enable "**Server Members Intent**". This is crucial for the bot to find users (e.g., for the nickname changing feature) and to generally function correctly in servers.
-      - Enable "**Message Content Intent**". This allows the bot to receive message content, which is important for processing any potential future commands.
+      - Enable "**Message Content Intent**". This allows the bot to receive message content, which is important for processing commands.
+
+### 1.b. Create a Twitch Application (OPTIONAL - for future Twitch features)
+
+   If you plan to use future Twitch-related features (like stream notifications, which are not yet re-implemented in this version but the groundwork is being laid), you'll need to register an application on the Twitch Developer Portal. If you only want the nickname changer, you can skip this step and omit `TWITCH_CLIENT_ID` and `TWITCH_CLIENT_SECRET` from your `.env` file.
+
+   a. Go to the [Twitch Developer Console](https://dev.twitch.tv/console/).
+   b. Log in with your Twitch account.
+   c. Click on "**Applications**" from the right side menu (or direct link: [https://dev.twitch.tv/console/apps](https://dev.twitch.tv/console/apps)).
+   d. Click "**+ Register Your Application**".
+   e. Fill in the details:
+      - **Name:** Give your application a unique name (e.g., "DecayeDojoBot-Notifier").
+      - **OAuth Redirect URLs:** For current app access token usage (and potential future webhook usage), `http://localhost` is a common placeholder.
+      - **Category:** Choose "Application Integration" or "Chat Bot".
+   f. Click "**Create**".
+   g. Once created, you'll see your application listed. Click "**Manage**" for the application you just created.
+   h. You will find your "**Client ID**" displayed. Copy this value for `TWITCH_CLIENT_ID`.
+   i. Click the "**New Secret**" button to generate a "**Client Secret**". Copy this value immediately for `TWITCH_CLIENT_SECRET` and store it securely. **You will not be able to see it again.**
 
 ### 2. Python Environment Setup (Using a Virtual Environment - Recommended)
 
@@ -122,25 +152,34 @@ For a quicker initial setup of the virtual environment and dependency installati
    DISCORD_SERVER_ID=your_discord_server_id
    # ID of the user whose nickname will be changed daily
    DISCORD_USER_ID=the_user_id_whose_nickname_will_be_changed
+
+   # --- Twitch Live Notifications Feature (OPTIONAL) ---
+   # To enable Twitch features, get these from Step 1.b.
+   # If these are not set, Twitch features will be disabled.
+   TWITCH_CLIENT_ID=your_twitch_app_client_id_here
+   TWITCH_CLIENT_SECRET=your_twitch_app_client_secret_here
    ```
 
    **Important Security Note:**
    Ensure your `.env` file is **never** committed to version control (e.g., Git). If you are using Git, add `.env` to your `.gitignore` file (see Step 5).
 
    **How to get specific IDs:**
-   *   `DISCORD_BOT_TOKEN`: See Step 1.
-   *   `DISCORD_SERVER_ID` & `DISCORD_USER_ID`:
-      - Enable Developer Mode in Discord: User Settings -> Advanced -> Developer Mode (toggle on).
-      - To get Server ID: Right-click on your server icon -> Copy ID.
-      - To get User ID (for name changing feature): Right-click on the target user's name -> Copy ID.
+   *   `DISCORD_BOT_TOKEN`: See Step 1.a.
+   *   `DISCORD_SERVER_ID` & `DISCORD_USER_ID`: (Required for Nickname Changer). For instructions on enabling Developer Mode and copying IDs, see Step 1.a.
+   *   `TWITCH_CLIENT_ID` & `TWITCH_CLIENT_SECRET`: See Step 1.b. (Optional, for Twitch features).
+      - Enable Developer Mode in Discord: User Settings -> App Settings -> Advanced -> Developer Mode (toggle on). (This line is slightly generic, the specific ID copying is for Discord IDs)
+      - To get Discord Server ID: Right-click on your server icon -> Copy ID.
+      - To get Discord User ID (for name changing feature): Right-click on the target user's name -> Copy ID.
 
    **Alternative: Setting System Environment Variables:**
    If you prefer not to use a `.env` file, you can set these variables directly in your operating system's environment. The script will still pick them up. `python-dotenv` loads variables from `.env` if present, but system-set variables usually take precedence if they conflict.
    The following variables are needed:
 
-   *   `DISCORD_BOT_TOKEN`
-   *   `DISCORD_SERVER_ID`
-   *   `DISCORD_USER_ID`
+   *   `DISCORD_BOT_TOKEN` (Required)
+   *   `DISCORD_SERVER_ID` (Required for Nickname Changer)
+   *   `DISCORD_USER_ID` (Required for Nickname Changer)
+   *   `TWITCH_CLIENT_ID` (Optional, for Twitch Live Notifications feature)
+   *   `TWITCH_CLIENT_SECRET` (Optional, for Twitch Live Notifications feature)
 
    Here's how you can set them if you choose this method:
 
@@ -149,6 +188,9 @@ For a quicker initial setup of the virtual environment and dependency installati
    export DISCORD_BOT_TOKEN="your_actual_bot_token"
    export DISCORD_SERVER_ID="your_server_id"
    export DISCORD_USER_ID="your_user_id_for_name_change"
+   # Optionally, for Twitch features:
+   # export TWITCH_CLIENT_ID="your_twitch_client_id"
+   # export TWITCH_CLIENT_SECRET="your_twitch_client_secret"
    ```
    To make them permanent, add these lines to your shell's profile file (e.g., `~/.bashrc`, `~/.zshrc`).
 
@@ -157,16 +199,22 @@ For a quicker initial setup of the virtual environment and dependency installati
    set DISCORD_BOT_TOKEN=your_actual_bot_token
    set DISCORD_SERVER_ID=your_server_id
    set DISCORD_USER_ID=your_user_id_for_name_change
+   REM Optionally, for Twitch features:
+   REM set TWITCH_CLIENT_ID=your_twitch_client_id
+   REM set TWITCH_CLIENT_SECRET=your_twitch_client_secret
    ```
    **For Windows (in PowerShell for the current session):**
    ```powershell
    $env:DISCORD_BOT_TOKEN="your_actual_bot_token"
    $env:DISCORD_SERVER_ID="your_server_id"
    $env:DISCORD_USER_ID="your_user_id_for_name_change"
+   # Optionally, for Twitch features:
+   # $env:TWITCH_CLIENT_ID="your_twitch_client_id"
+   # $env:TWITCH_CLIENT_SECRET="your_twitch_client_secret"
    ```
    To set them permanently on Windows, search for "environment variables" in the Start menu to edit system environment variables.
 
-   The script will print error messages and exit if these required variables are not found (either in `.env` or system environment).
+   The script will print error messages and exit if required Discord variables are not found. Twitch variables are optional; if missing, Twitch-related functionality will be disabled.
 
 ### 5. Run the Bot
 
@@ -199,10 +247,34 @@ For a quicker initial setup of the virtual environment and dependency installati
     *   **Permissions:** To use this command, you must have the "Manage Nicknames" permission in the server. The bot will inform you if you lack this permission.
     *   **Note:** This is in addition to the automatic daily nickname change. Slash commands may take up to an hour to appear in all servers after the bot is updated or restarted, unless synced to a specific development guild.
 
+### Twitch Notifications
+
+#### Admin Commands
+*   **`/twitchadmin set_channel channel:<#channel>`**
+    *   **Description:** Sets or updates the specific Discord channel where Twitch live notifications will be sent for this server. Only one notification channel can be set per server.
+    *   **Usage:** `/twitchadmin set_channel channel:#your-twitch-updates`
+    *   **Permissions Required:** Manage Server (or Administrator).
+
+#### User Commands
+*   **`/twitch notify add twitch_username:<username>`**
+    *   **Description:** Registers a Twitch username to send live notifications to this server's configured Twitch updates channel.
+    *   **Usage:** `/twitch notify add twitch_username:your_twitch_login_name`
+    *   **Note:** Uses the Twitch login name (the one in the URL), not necessarily the display name. Requires an admin to have first set a notification channel using `/twitchadmin set_channel`.
+
+*   **`/twitch notify remove twitch_username:<username>`**
+    *   **Description:** Unregisters a Twitch username from live notifications on this server.
+    *   **Usage:** `/twitch notify remove twitch_username:your_twitch_login_name`
+
+*   **`/twitch notify list`**
+    *   **Description:** Lists all Twitch channels currently registered for live notifications on this server.
+    *   **Usage:** `/twitch notify list`
+
 ## Customization
 
-*   **Name Source:** The bot fetches random male names dynamically from the `randomuser.me` API for the daily name change feature.
-*   **Task Interval:** The Daily Name Change task runs daily at 06:01 UTC (see feature description above). This can be adjusted in `name_changer_bot.py` by modifying the `@tasks.loop(time=...)` decorator for the `change_nickname_task` function.
+*   **Name Source (Daily Nickname Changer):** The bot fetches random male names dynamically from the `randomuser.me` API for the daily name change feature.
+*   **Task Intervals:**
+    *   Daily Name Change: Runs daily at 06:01 UTC (see feature description above). This can be adjusted in `name_changer_bot.py` by modifying the `@tasks.loop(time=...)` decorator for the `change_nickname_task` function.
+    *   Twitch Status Polling: Runs approximately every 1 minute (`@tasks.loop(minutes=1)`). This can also be adjusted in the script if needed (be mindful of API rate limits for Twitch).
 
 ## Troubleshooting
 
