@@ -457,7 +457,8 @@ async def check_twitch_streams_task():
                                         )
                                         view.add_item(button)
 
-                                        message = await discord_channel.send(content="@everyone", embed=stream_embed, view=view)
+                                        message_content = f"{stream_data.get('title', 'Live on Twitch!')} @everyone"
+                                        message = await discord_channel.send(content=message_content, embed=stream_embed, view=view)
                                         details['last_message_id'] = message.id
                                         print(f"Sent live notification for {login_name}")
                                     except Exception as e:
