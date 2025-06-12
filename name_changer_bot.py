@@ -438,8 +438,10 @@ async def check_twitch_streams_task():
                                     
                                     # Image (Stream Preview)
                                     if stream_data.get('thumbnail_url'):
-                                        stream_preview_url = stream_data['thumbnail_url'].replace('{width}', '400').replace('{height}', '225')
-                                        stream_embed.set_image(url=stream_preview_url)
+                                        base_url = stream_data['thumbnail_url'].replace('{width}', '400').replace('{height}', '225')
+                                        # Add cache-busting query parameter
+                                        final_stream_preview_url = f"{base_url}?t={int(time.time())}"
+                                        stream_embed.set_image(url=final_stream_preview_url)
 
                                     # Footer
                                     stream_embed.set_footer(
