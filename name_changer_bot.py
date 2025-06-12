@@ -404,24 +404,45 @@ async def check_twitch_streams_task():
                                     details['stream_start_timestamp'] = datetime.datetime.now().timestamp()
                                     details['last_thumbnail_url'] = stream_data.get('thumbnail_url')  # Store thumbnail URL
                                     
-                                    stream_embed = discord.Embed(
-                                        title=f"{details.get('display_name', login_name)} is now live on Twitch!",
-                                        description=f"**{stream_data.get('title', 'No Title')}**\n\n"
-                                                  f"🎮 Playing: **{current_game_name}**\n"
-                                                  f"👥 Current Viewers: **{current_viewers}**",
-                                        url=f"https://twitch.tv/{login_name}",
-                                        color=discord.Color.purple()
+                                    # Create the new embed
+                                    embed_title = f"{details.get('display_name', login_name)} is playing {current_game_name} on Twitch!"
+                                    embed_url = f"https://www.twitch.tv/{login_name}"
+                                    embed_description = (
+                                        f"{stream_data.get('title', 'No Title')}\n"
+                                        f"🎮 Playing: {current_game_name}\n"
+                                        f"👥 Current Viewers: {current_viewers}"
                                     )
                                     
-                                    # Set game box art as main image if available
+                                    stream_embed = discord.Embed(
+                                        title=embed_title,
+                                        url=embed_url,
+                                        description=embed_description,
+                                        color=0x00b0f4, # Hex value for #00b0f4
+                                        timestamp=datetime.datetime.now(datetime.timezone.utc)
+                                    )
+
+                                    # Author
+                                    stream_embed.set_author(
+                                        name="Decayed-Dojo-Bot",
+                                        url=embed_url,
+                                        icon_url="https://images-ext-1.discordapp.net/external/sjrFfAjQl0sgkeSmFGQY6KLtJ7T0hPRz3ATvo56dosM/https/static-cdn.jtvnw.net/jtv_user_pictures/fe62bc11-e519-41a2-a5ca-bf9038548794-profile_image-300x300.png?format=webp&quality=lossless"
+                                    )
+
+                                    # Image (Game Box Art)
                                     if game_info and game_info.get('box_art_url'):
-                                        box_art_url = game_info['box_art_url'].replace('{width}', '285').replace('{height}', '380')
+                                        box_art_url = game_info['box_art_url'].replace('{width}', '400').replace('{height}', '225')
                                         stream_embed.set_image(url=box_art_url)
                                     
-                                    # Set profile picture as thumbnail
+                                    # Thumbnail (Streamer Profile Picture)
                                     if user_profile and user_profile.get('profile_image_url'):
                                         stream_embed.set_thumbnail(url=user_profile['profile_image_url'])
                                     
+                                    # Footer
+                                    stream_embed.set_footer(
+                                        text="decayeddojo.com",
+                                        icon_url="https://cdn-icons-png.flaticon.com/128/4494/4494567.png"
+                                    )
+
                                     try:
                                         message = await discord_channel.send(content="@everyone", embed=stream_embed)
                                         details['last_message_id'] = message.id
@@ -451,52 +472,47 @@ async def check_twitch_streams_task():
                                     minutes = int((duration % 3600) // 60)
                                     duration_text = f"Stream Duration: **{hours}h {minutes}m**"
                                 
-                                # Get game info for last played game
-                                game_info = None
-                                if details.get('last_game_id'):
-                                    game_info = await get_game_info(details['last_game_id'], headers)
+                                # Get user profile for thumbnail
+                                user_profile = await get_twitch_user_profile(twitch_user_id, headers)
                                 
-                                embed = discord.Embed(
-                                    title=f"📺 {details.get('display_name', login_name)} has ended their stream",
-                                    description=f"**Stream Summary**\n\n"
-                                               f"{duration_text}\n"
-                                               f"Peak Viewers: **{details.get('peak_viewers', 0)}**\n"
-                                               f"Average Viewers: **{details.get('avg_viewers', 0)}**\n"
-                                               f"Last Game: **{details.get('last_game_name', 'N/A')}**\n\n"
-                                               f"Thanks for watching! 👋",
-                                    color=discord.Color.dark_grey()
+                                # Create the new embed for offline message
+                                embed_title = f"{details.get('display_name', login_name)} has finished streaming."
+                                embed_url = f"https://www.twitch.tv/{login_name}"
+                                embed_description = (
+                                    "Stream Summary\n"
+                                    f"{duration_text}\n"
+                                    f"Peak Viewers: **{details.get('peak_viewers', 0)}**\n"
+                                    f"Average Viewers: **{details.get('avg_viewers', 0)}**\n"
+                                    f"Last Game: **{details.get('last_game_name', 'N/A')}**\n\n"
+                                    "Thanks for watching! 👋"
+                                )
+
+                                offline_embed = discord.Embed(
+                                    title=embed_title,
+                                    description=embed_description,
+                                    color=0x808080,  # Hex value for dark grey
+                                    timestamp=datetime.datetime.now(datetime.timezone.utc)
+                                )
+
+                                # Author
+                                offline_embed.set_author(
+                                    name="Decayed-Dojo-Bot",
+                                    url=embed_url,
+                                    icon_url="https://images-ext-1.discordapp.net/external/sjrFfAjQl0sgkeSmFGQY6KLtJ7T0hPRz3ATvo56dosM/https/static-cdn.jtvnw.net/jtv_user_pictures/fe62bc11-e519-41a2-a5ca-bf9038548794-profile_image-300x300.png?format=webp&quality=lossless"
+                                )
+
+                                # Thumbnail (Streamer Profile Picture)
+                                if user_profile and user_profile.get('profile_image_url'):
+                                    offline_embed.set_thumbnail(url=user_profile['profile_image_url'])
+                                
+                                # Footer
+                                offline_embed.set_footer(
+                                    text="decayeddojo.com",
+                                    icon_url="https://cdn-icons-png.flaticon.com/128/4494/4494567.png"
                                 )
                                 
-                                # Set profile picture as thumbnail
-                                user_profile = await get_twitch_user_profile(twitch_user_id, headers)
-                                if user_profile and user_profile.get('profile_image_url'):
-                                    embed.set_thumbnail(url=user_profile['profile_image_url'])
-                                
-                                # Get and set game box art
-                                if details.get('last_game_id'):
-                                    game_info = await get_game_info(details['last_game_id'], headers)
-                                    if game_info and game_info.get('box_art_url'):
-                                        game_embed = discord.Embed(color=discord.Color.dark_grey())
-                                        box_art_url = game_info['box_art_url'].replace('{width}', '285').replace('{height}', '380')
-                                        game_embed.set_image(url=box_art_url)
-                                        # Send game image as separate embed
-                                        await discord_channel.send(embed=game_embed)
-
-                                # Add stream preview image if available
-                                last_thumbnail_url = details.get('last_thumbnail_url', '')
-                                if last_thumbnail_url:
-                                    thumb_url = last_thumbnail_url.replace('{width}', '1280').replace('{height}', '720')
-                                    stream_preview_embed = discord.Embed(color=discord.Color.dark_grey())
-                                    stream_preview_embed.set_image(url=f"{thumb_url}?t={int(time.time())}")
-                                    # Send stream preview as separate embed
-                                    await discord_channel.send(embed=stream_preview_embed)
-
-                                # Add footer with end time
-                                embed.set_footer(text="Stream Ended")
-                                embed.timestamp = datetime.datetime.now()
-                                
                                 try:
-                                    await discord_channel.send(embed=embed)
+                                    await discord_channel.send(embed=offline_embed)
                                     print(f"Sent offline notification for {login_name}")
                                 except Exception as e:
                                     print(f"Error sending offline notification: {e}")
