@@ -386,7 +386,11 @@ async def check_twitch_streams_task():
                                             updated_embed.description = '\n'.join(description_lines)
                                             
                                             # Update the message with all changes
-                                            await message.edit(content="@everyone", embed=updated_embed)
+                                            if DEBUG_MODE_ENABLED:
+                                                edited_message_content = "[DEBUG] Stream Updated" # Or use message.content to preserve original if it was debug
+                                            else:
+                                                edited_message_content = "@everyone"
+                                            await message.edit(content=edited_message_content, embed=updated_embed)
                                             
                                             # Update stats
                                             if current_viewers > details.get('peak_viewers', 0):
