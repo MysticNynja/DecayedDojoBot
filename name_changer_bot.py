@@ -49,6 +49,10 @@ TWITCH_CLIENT_SECRET = os.getenv('TWITCH_CLIENT_SECRET')
 if not TWITCH_CLIENT_ID or not TWITCH_CLIENT_SECRET:
     print("Warning: TWITCH_CLIENT_ID or TWITCH_CLIENT_SECRET not set. Twitch features will be disabled.", file=sys.stderr)
 
+# Debug Mode Configuration
+DEBUG_MODE_ENABLED = os.getenv('BOT_DEBUG_MODE', 'False').lower() == 'true'
+print(f"Bot Debug Mode Enabled: {DEBUG_MODE_ENABLED}")
+
 # --- Global Variables for Twitch ---
 twitch_access_token = None
 twitch_token_expires_at = 0
@@ -404,7 +408,8 @@ async def check_twitch_streams_task():
                                     details['stream_start_time'] = datetime.datetime.now(datetime.timezone.utc).timestamp()
                                     details['stream_start_timestamp'] = datetime.datetime.now(datetime.timezone.utc).timestamp()
                                     details['last_thumbnail_url'] = stream_data.get('thumbnail_url')  # Store thumbnail URL
-                                    print(f"DEBUG: Stream {login_name} just went live. Initial timestamps set: stream_start_time={details['stream_start_time']}, stream_start_timestamp={details['stream_start_timestamp']}")
+                                    if DEBUG_MODE_ENABLED:
+                                        print(f"DEBUG: Stream {login_name} just went live. Initial timestamps set: stream_start_time={details['stream_start_time']}, stream_start_timestamp={details['stream_start_timestamp']}")
                                     
                                     # Create the new embed
                                     embed_title = f"{details.get('display_name', login_name)} is playing {current_game_name} on Twitch!"
@@ -467,7 +472,11 @@ async def check_twitch_streams_task():
                                         else:
                                             text_to_use = stream_data.get('title', 'Live on Twitch!')
 
-                                        message_content = f"{text_to_use} @everyone"
+                                        if DEBUG_MODE_ENABLED:
+                                            message_content = f"[DEBUG] {text_to_use}" # No @everyone ping in debug mode
+                                        else:
+                                            message_content = f"{text_to_use} @everyone" # Normal behavior with @everyone
+
                                         message = await discord_channel.send(content=message_content, embed=stream_embed, view=view)
                                         details['last_message_id'] = message.id
                                         print(f"Sent live notification for {login_name}")
@@ -480,7 +489,7 @@ async def check_twitch_streams_task():
                                 details['last_game_name'] = current_game_name
                                 details['last_game_id'] = current_game_id
                                 # Timestamps are set only in the 'elif not was_live:' block now
-                                print(f"DEBUG: Stream {login_name} just went live. Start timestamps set to: stream_start_time={details['stream_start_time']}, stream_start_timestamp={details['stream_start_timestamp']}")
+                                # The debug print for initial timestamp setting is now at the beginning of this block.
                                 save_json_data(guild_stream_registrations, STREAM_REGISTRATIONS_FILE, "stream registrations")
                             
 
@@ -492,19 +501,23 @@ async def check_twitch_streams_task():
                                 duration_text = ""
                                 start_ts_for_duration = details.get('stream_start_timestamp')
                                 current_ts_for_duration = time.time() # This is a local epoch time
-                                print(f"DEBUG: Calculating duration for {login_name}. Start_Timestamp (UTC epoch): {start_ts_for_duration}, Current_Time (local epoch): {current_ts_for_duration}")
+                                if DEBUG_MODE_ENABLED:
+                                    print(f"DEBUG: Calculating duration for {login_name}. Start_Timestamp (UTC epoch): {start_ts_for_duration}, Current_Time (local epoch): {current_ts_for_duration}")
                                 if start_ts_for_duration is not None:
                                     # It's important that both timestamps are of the same nature (both UTC epoch or both local epoch)
                                     # Since start_ts_for_duration is now UTC epoch, current_ts_for_duration should also be UTC epoch for direct subtraction.
                                     current_utc_ts_for_duration = datetime.datetime.now(datetime.timezone.utc).timestamp()
-                                    print(f"DEBUG: Using Current_Time (UTC epoch) for calculation: {current_utc_ts_for_duration}")
+                                    if DEBUG_MODE_ENABLED:
+                                        print(f"DEBUG: Using Current_Time (UTC epoch) for calculation: {current_utc_ts_for_duration}")
                                     duration = current_utc_ts_for_duration - start_ts_for_duration
-                                    print(f"DEBUG: Raw duration value: {duration}")
+                                    if DEBUG_MODE_ENABLED:
+                                        print(f"DEBUG: Raw duration value: {duration}")
                                     hours = int(duration // 3600)
                                     minutes = int((duration % 3600) // 60)
                                     duration_text = f"Stream Duration: **{hours}h {minutes}m**"
                                 else:
-                                    print(f"DEBUG: Start_Timestamp is None for {login_name}, duration_text will be empty.")
+                                    if DEBUG_MODE_ENABLED:
+                                        print(f"DEBUG: Start_Timestamp is None for {login_name}, duration_text will be empty.")
                                 
                                 # Get user profile for thumbnail
                                 user_profile = await get_twitch_user_profile(twitch_user_id, headers)
