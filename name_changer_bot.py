@@ -401,8 +401,10 @@ async def check_twitch_streams_task():
                                     game_info = await get_game_info(current_game_id, headers)
                                     
                                     # Store stream start time and thumbnail URL
+                                    details['stream_start_time'] = datetime.datetime.now(datetime.timezone.utc).timestamp()
                                     details['stream_start_timestamp'] = datetime.datetime.now(datetime.timezone.utc).timestamp()
                                     details['last_thumbnail_url'] = stream_data.get('thumbnail_url')  # Store thumbnail URL
+                                    print(f"DEBUG: Stream {login_name} just went live. Initial timestamps set: stream_start_time={details['stream_start_time']}, stream_start_timestamp={details['stream_start_timestamp']}")
                                     
                                     # Create the new embed
                                     embed_title = f"{details.get('display_name', login_name)} is playing {current_game_name} on Twitch!"
@@ -477,9 +479,8 @@ async def check_twitch_streams_task():
                                 details['last_stream_id'] = stream_data.get('id')
                                 details['last_game_name'] = current_game_name
                                 details['last_game_id'] = current_game_id
-                                # Ensure both time trackers use UTC epoch timestamps
-                                details['stream_start_time'] = datetime.datetime.now(datetime.timezone.utc).timestamp()
-                                details['stream_start_timestamp'] = datetime.datetime.now(datetime.timezone.utc).timestamp()
+                                # Timestamps are set only in the 'elif not was_live:' block now
+                                print(f"DEBUG: Stream {login_name} just went live. Start timestamps set to: stream_start_time={details['stream_start_time']}, stream_start_timestamp={details['stream_start_timestamp']}")
                                 save_json_data(guild_stream_registrations, STREAM_REGISTRATIONS_FILE, "stream registrations")
                             
 
@@ -577,10 +578,15 @@ async def check_twitch_streams_task():
                                     clips_channel = bot.get_channel(clips_channel_id)
                                     if clips_channel and isinstance(clips_channel, discord.TextChannel):
                                         # Format the start time for Twitch API
-                                        start_time = datetime.datetime.fromtimestamp(details.get('stream_start_time', 0)).isoformat() + 'Z'
+                                        raw_start_time_value = details.get('stream_start_time') # Get value, might be None
+                                        # Ensure numeric_start_time is 0 if raw_start_time_value is None, otherwise use raw_start_time_value
+                                        numeric_start_time_for_clips = raw_start_time_value if raw_start_time_value is not None else 0
+
+                                        # Use timezone aware UTC for fromtimestamp
+                                        start_time_iso = datetime.datetime.fromtimestamp(numeric_start_time_for_clips, datetime.timezone.utc).isoformat() + 'Z'
                                         
                                         # Get clips created during the stream
-                                        clips = await get_stream_clips(twitch_user_id, start_time, headers)
+                                        clips = await get_stream_clips(twitch_user_id, start_time_iso, headers)
                                         
                                         if clips:
                                             clips_embed = discord.Embed(
