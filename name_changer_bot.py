@@ -49,6 +49,10 @@ TWITCH_CLIENT_SECRET = os.getenv('TWITCH_CLIENT_SECRET')
 if not TWITCH_CLIENT_ID or not TWITCH_CLIENT_SECRET:
     print("Warning: TWITCH_CLIENT_ID or TWITCH_CLIENT_SECRET not set. Twitch features will be disabled.", file=sys.stderr)
 
+# Debug Mode Configuration
+DEBUG_MODE_ENABLED = os.getenv('BOT_DEBUG_MODE', 'False').lower() == 'true'
+print(f"Bot Debug Mode Enabled: {DEBUG_MODE_ENABLED}")
+
 # --- Global Variables for Twitch ---
 twitch_access_token = None
 twitch_token_expires_at = 0
@@ -346,8 +350,16 @@ async def check_twitch_streams_task():
                                         message = await discord_channel.fetch_message(details['last_message_id'])
                                         if message:
                                             updated_embed = message.embeds[0]
+
+                                            # Always update main image to latest stream preview
+                                            if stream_data.get('thumbnail_url'):
+                                                base_stream_preview_url = stream_data['thumbnail_url'].replace('{width}', '400').replace('{height}', '225')
+                                                final_stream_preview_url = f"{base_stream_preview_url}?t={int(time.time())}" # Cache-busting
+                                                updated_embed.set_image(url=final_stream_preview_url)
+                                            else:
+                                                updated_embed.set_image(url=None) # Clear image if no current preview URL
                                             
-                                            # Update stream title if changed
+                                            # Update stream title if changed (in embed description)
                                             current_title = stream_data.get('title', 'No Title')
                                             description_lines = (updated_embed.description or "").split('\n')
                                             if not description_lines[0].endswith(current_title):
@@ -366,10 +378,12 @@ async def check_twitch_streams_task():
                                                         description_lines[i] = f"🎮 Playing: **{current_game_name}**"
                                                 updated_embed.description = '\n'.join(description_lines)
                                                 
-                                                # Update game box art
+                                                # Update game box art as thumbnail
                                                 if game_info and game_info.get('box_art_url'):
-                                                    box_art_url = game_info['box_art_url'].replace('{width}', '285').replace('{height}', '380')
-                                                    updated_embed.set_image(url=box_art_url)
+                                                    new_box_art_url = game_info['box_art_url'].replace('{width}', '285').replace('{height}', '380')
+                                                    updated_embed.set_thumbnail(url=new_box_art_url)
+                                                else:
+                                                    updated_embed.set_thumbnail(url=None)
                                                 
                                                 details['last_game_id'] = current_game_id
                                                 details['last_game_name'] = current_game_name
@@ -380,10 +394,20 @@ async def check_twitch_streams_task():
                                                 if "👥 Current Viewers:" in line:
                                                     description_lines[i] = f"👥 Current Viewers: **{current_viewers}**"
                                             updated_embed.description = '\n'.join(description_lines)
-                                            
-                                            # Update the message with all changes
-                                            await message.edit(content="@everyone", embed=updated_embed)
-                                            
+
+                                            custom_message = details.get('custom_live_message')
+                                            if custom_message: # Check if not None and not empty
+                                                text_to_use = custom_message
+                                            else:
+                                                text_to_use = stream_data.get('title', 'Live on Twitch!')
+
+                                            if DEBUG_MODE_ENABLED:
+                                                message_content = f"[DEBUG] {text_to_use}" # No @everyone ping in debug mode
+                                            else:
+                                                message_content = f"{text_to_use} @everyone" # Normal behavior with @everyone
+
+                                            await message.edit(content=message_content, embed=updated_embed)
+
                                             # Update stats
                                             if current_viewers > details.get('peak_viewers', 0):
                                                 details['peak_viewers'] = current_viewers
@@ -401,29 +425,79 @@ async def check_twitch_streams_task():
                                     game_info = await get_game_info(current_game_id, headers)
                                     
                                     # Store stream start time and thumbnail URL
-                                    details['stream_start_timestamp'] = datetime.datetime.now().timestamp()
+                                    details['stream_start_time'] = datetime.datetime.now(datetime.timezone.utc).timestamp()
+                                    details['stream_start_timestamp'] = datetime.datetime.now(datetime.timezone.utc).timestamp()
                                     details['last_thumbnail_url'] = stream_data.get('thumbnail_url')  # Store thumbnail URL
+                                    if DEBUG_MODE_ENABLED:
+                                        print(f"DEBUG: Stream {login_name} just went live. Initial timestamps set: stream_start_time={details['stream_start_time']}, stream_start_timestamp={details['stream_start_timestamp']}")
                                     
-                                    stream_embed = discord.Embed(
-                                        title=f"{details.get('display_name', login_name)} is now live on Twitch!",
-                                        description=f"**{stream_data.get('title', 'No Title')}**\n\n"
-                                                  f"🎮 Playing: **{current_game_name}**\n"
-                                                  f"👥 Current Viewers: **{current_viewers}**",
-                                        url=f"https://twitch.tv/{login_name}",
-                                        color=discord.Color.purple()
+                                    # Create the new embed
+                                    embed_title = f"{details.get('display_name', login_name)} is playing {current_game_name} on Twitch!"
+                                    embed_url = f"https://www.twitch.tv/{login_name}"
+                                    embed_description = (
+                                        f"{stream_data.get('title', 'No Title')}\n"
+                                        f"🎮 Playing: {current_game_name}\n"
+                                        f"👥 Current Viewers: {current_viewers}"
                                     )
                                     
-                                    # Set game box art as main image if available
+                                    stream_embed = discord.Embed(
+                                        title=embed_title,
+                                        url=embed_url,
+                                        description=embed_description,
+                                        color=0x00b0f4, # Hex value for #00b0f4
+                                        timestamp=datetime.datetime.now(datetime.timezone.utc)
+                                    )
+
+                                    # Author (Streamer Info)
+                                    author_icon_url = None
+                                    if user_profile and user_profile.get('profile_image_url'):
+                                        author_icon_url = user_profile['profile_image_url']
+                                    stream_embed.set_author(
+                                        name=details.get('display_name', login_name),
+                                        url=embed_url,
+                                        icon_url=author_icon_url
+                                    )
+
+                                    # Thumbnail (Game Box Art)
                                     if game_info and game_info.get('box_art_url'):
                                         box_art_url = game_info['box_art_url'].replace('{width}', '285').replace('{height}', '380')
-                                        stream_embed.set_image(url=box_art_url)
+                                        stream_embed.set_thumbnail(url=box_art_url)
                                     
-                                    # Set profile picture as thumbnail
-                                    if user_profile and user_profile.get('profile_image_url'):
-                                        stream_embed.set_thumbnail(url=user_profile['profile_image_url'])
-                                    
+                                    # Image (Stream Preview)
+                                    if stream_data.get('thumbnail_url'):
+                                        base_url = stream_data['thumbnail_url'].replace('{width}', '400').replace('{height}', '225')
+                                        # Add cache-busting query parameter
+                                        final_stream_preview_url = f"{base_url}?t={int(time.time())}"
+                                        stream_embed.set_image(url=final_stream_preview_url)
+
+                                    # Footer
+                                    stream_embed.set_footer(
+                                        text="decayeddojo.com",
+                                        icon_url="https://cdn-icons-png.flaticon.com/128/4494/4494567.png"
+                                    )
+
                                     try:
-                                        message = await discord_channel.send(content="@everyone", embed=stream_embed)
+                                        # Create View and Button
+                                        view = discord.ui.View()
+                                        button = discord.ui.Button(
+                                            label="Watch Stream",
+                                            style=discord.ButtonStyle.link,
+                                            url=embed_url # embed_url is f"https://www.twitch.tv/{login_name}"
+                                        )
+                                        view.add_item(button)
+
+                                        custom_message = details.get('custom_live_message')
+                                        if custom_message: # Check if not None and not empty
+                                            text_to_use = custom_message
+                                        else:
+                                            text_to_use = stream_data.get('title', 'Live on Twitch!')
+
+                                        if DEBUG_MODE_ENABLED:
+                                            message_content = f"[DEBUG] {text_to_use}" # No @everyone ping in debug mode
+                                        else:
+                                            message_content = f"{text_to_use} @everyone" # Normal behavior with @everyone
+
+                                        message = await discord_channel.send(content=message_content, embed=stream_embed, view=view)
                                         details['last_message_id'] = message.id
                                         print(f"Sent live notification for {login_name}")
                                     except Exception as e:
@@ -434,8 +508,8 @@ async def check_twitch_streams_task():
                                 details['last_stream_id'] = stream_data.get('id')
                                 details['last_game_name'] = current_game_name
                                 details['last_game_id'] = current_game_id
-                                details['stream_start_time'] = time.time()
-                                details['stream_start_timestamp'] = datetime.datetime.now().timestamp()  # Store start time as timestamp
+                                # Timestamps are set only in the 'elif not was_live:' block now
+                                # The debug print for initial timestamp setting is now at the beginning of this block.
                                 save_json_data(guild_stream_registrations, STREAM_REGISTRATIONS_FILE, "stream registrations")
                             
 
@@ -445,58 +519,79 @@ async def check_twitch_streams_task():
                                 
                                 # Calculate stream duration if we have the start time
                                 duration_text = ""
-                                if details.get('stream_start_timestamp'):
-                                    duration = time.time() - details.get('stream_start_timestamp')
+                                start_ts_for_duration = details.get('stream_start_timestamp')
+                                current_ts_for_duration = time.time() # This is a local epoch time
+                                if DEBUG_MODE_ENABLED:
+                                    print(f"DEBUG: Calculating duration for {login_name}. Start_Timestamp (UTC epoch): {start_ts_for_duration}, Current_Time (local epoch): {current_ts_for_duration}")
+                                if start_ts_for_duration is not None:
+                                    # It's important that both timestamps are of the same nature (both UTC epoch or both local epoch)
+                                    # Since start_ts_for_duration is now UTC epoch, current_ts_for_duration should also be UTC epoch for direct subtraction.
+                                    current_utc_ts_for_duration = datetime.datetime.now(datetime.timezone.utc).timestamp()
+                                    if DEBUG_MODE_ENABLED:
+                                        print(f"DEBUG: Using Current_Time (UTC epoch) for calculation: {current_utc_ts_for_duration}")
+                                    duration = current_utc_ts_for_duration - start_ts_for_duration
+                                    if DEBUG_MODE_ENABLED:
+                                        print(f"DEBUG: Raw duration value: {duration}")
                                     hours = int(duration // 3600)
                                     minutes = int((duration % 3600) // 60)
                                     duration_text = f"Stream Duration: **{hours}h {minutes}m**"
+                                else:
+                                    if DEBUG_MODE_ENABLED:
+                                        print(f"DEBUG: Start_Timestamp is None for {login_name}, duration_text will be empty.")
                                 
-                                # Get game info for last played game
-                                game_info = None
+                                # Get user profile for thumbnail
+                                user_profile = await get_twitch_user_profile(twitch_user_id, headers)
+                                
+                                # Create the new embed for offline message
+                                embed_title = f"{details.get('display_name', login_name)} has finished streaming."
+                                embed_url = f"https://www.twitch.tv/{login_name}"
+                                embed_description = (
+                                    "Stream Summary\n"
+                                    f"{duration_text}\n"
+                                    f"Peak Viewers: **{details.get('peak_viewers', 0)}**\n"
+                                    f"Average Viewers: **{details.get('avg_viewers', 0)}**\n"
+                                    f"Last Game: **{details.get('last_game_name', 'N/A')}**\n\n"
+                                    "Thanks for watching! 👋"
+                                )
+
+                                offline_embed = discord.Embed(
+                                    title=embed_title,
+                                    description=embed_description,
+                                    color=0x808080,  # Hex value for dark grey
+                                    timestamp=datetime.datetime.now(datetime.timezone.utc)
+                                )
+
+                                # Author (Streamer Info)
+                                author_icon_url = None
+                                if user_profile and user_profile.get('profile_image_url'):
+                                    author_icon_url = user_profile['profile_image_url']
+                                offline_embed.set_author(
+                                    name=details.get('display_name', login_name),
+                                    url=embed_url,
+                                    icon_url=author_icon_url
+                                )
+
+                                # Thumbnail (Last Game Box Art)
+                                game_info = None # Ensure game_info is defined before conditional assignment
                                 if details.get('last_game_id'):
                                     game_info = await get_game_info(details['last_game_id'], headers)
-                                
-                                embed = discord.Embed(
-                                    title=f"📺 {details.get('display_name', login_name)} has ended their stream",
-                                    description=f"**Stream Summary**\n\n"
-                                               f"{duration_text}\n"
-                                               f"Peak Viewers: **{details.get('peak_viewers', 0)}**\n"
-                                               f"Average Viewers: **{details.get('avg_viewers', 0)}**\n"
-                                               f"Last Game: **{details.get('last_game_name', 'N/A')}**\n\n"
-                                               f"Thanks for watching! 👋",
-                                    color=discord.Color.dark_grey()
+                                if game_info and game_info.get('box_art_url'):
+                                    box_art_url = game_info['box_art_url'].replace('{width}', '285').replace('{height}', '380')
+                                    offline_embed.set_thumbnail(url=box_art_url)
+                                else: # Fallback if no game box art (e.g. game_id was null, or API failed)
+                                    offline_embed.set_thumbnail(url=None) # Or a default placeholder
+
+                                # Ensure no main image is set for offline embed
+                                offline_embed.set_image(url=None)
+
+                                # Footer
+                                offline_embed.set_footer(
+                                    text="decayeddojo.com",
+                                    icon_url="https://cdn-icons-png.flaticon.com/128/4494/4494567.png"
                                 )
                                 
-                                # Set profile picture as thumbnail
-                                user_profile = await get_twitch_user_profile(twitch_user_id, headers)
-                                if user_profile and user_profile.get('profile_image_url'):
-                                    embed.set_thumbnail(url=user_profile['profile_image_url'])
-                                
-                                # Get and set game box art
-                                if details.get('last_game_id'):
-                                    game_info = await get_game_info(details['last_game_id'], headers)
-                                    if game_info and game_info.get('box_art_url'):
-                                        game_embed = discord.Embed(color=discord.Color.dark_grey())
-                                        box_art_url = game_info['box_art_url'].replace('{width}', '285').replace('{height}', '380')
-                                        game_embed.set_image(url=box_art_url)
-                                        # Send game image as separate embed
-                                        await discord_channel.send(embed=game_embed)
-
-                                # Add stream preview image if available
-                                last_thumbnail_url = details.get('last_thumbnail_url', '')
-                                if last_thumbnail_url:
-                                    thumb_url = last_thumbnail_url.replace('{width}', '1280').replace('{height}', '720')
-                                    stream_preview_embed = discord.Embed(color=discord.Color.dark_grey())
-                                    stream_preview_embed.set_image(url=f"{thumb_url}?t={int(time.time())}")
-                                    # Send stream preview as separate embed
-                                    await discord_channel.send(embed=stream_preview_embed)
-
-                                # Add footer with end time
-                                embed.set_footer(text="Stream Ended")
-                                embed.timestamp = datetime.datetime.now()
-                                
                                 try:
-                                    await discord_channel.send(embed=embed)
+                                    await discord_channel.send(embed=offline_embed)
                                     print(f"Sent offline notification for {login_name}")
                                 except Exception as e:
                                     print(f"Error sending offline notification: {e}")
@@ -516,10 +611,15 @@ async def check_twitch_streams_task():
                                     clips_channel = bot.get_channel(clips_channel_id)
                                     if clips_channel and isinstance(clips_channel, discord.TextChannel):
                                         # Format the start time for Twitch API
-                                        start_time = datetime.datetime.fromtimestamp(details.get('stream_start_time', 0)).isoformat() + 'Z'
+                                        raw_start_time_value = details.get('stream_start_time') # Get value, might be None
+                                        # Ensure numeric_start_time is 0 if raw_start_time_value is None, otherwise use raw_start_time_value
+                                        numeric_start_time_for_clips = raw_start_time_value if raw_start_time_value is not None else 0
+
+                                        # Use timezone aware UTC for fromtimestamp
+                                        start_time_iso = datetime.datetime.fromtimestamp(numeric_start_time_for_clips, datetime.timezone.utc).isoformat() + 'Z'
                                         
                                         # Get clips created during the stream
-                                        clips = await get_stream_clips(twitch_user_id, start_time, headers)
+                                        clips = await get_stream_clips(twitch_user_id, start_time_iso, headers)
                                         
                                         if clips:
                                             clips_embed = discord.Embed(
@@ -751,6 +851,51 @@ async def twitch_notify_list(interaction: discord.Interaction):
              for tid, d in guild_stream_registrations[gid_str].items()]
     embed.description = "\n".join(lines) if lines else "No channels registered."
     await interaction.response.send_message(embed=embed, ephemeral=True)
+
+@twitch_user_group.command(name="setlivenotification", description="Sets or updates your custom go-live notification message for the bot.")
+@app_commands.describe(
+    twitch_username="Your Twitch username (login name).",
+    message="Your custom go-live message (max 140 characters)."
+)
+async def twitch_set_live_notification(interaction: discord.Interaction, twitch_username: str, message: str):
+    if not interaction.guild_id:
+        await interaction.response.send_message("This command can only be used in a server.", ephemeral=True)
+        return
+    if not TWITCH_CLIENT_ID or not TWITCH_CLIENT_SECRET:
+        await interaction.response.send_message("Twitch features are not configured on this bot.", ephemeral=True)
+        return
+
+    await interaction.response.defer(ephemeral=True)
+
+    guild_id_str = str(interaction.guild_id)
+    twitch_username_input = twitch_username.lower()
+
+    if guild_id_str not in guild_stream_registrations:
+        await interaction.followup.send(f"`{twitch_username}` not found in registrations for this server. Use `/twitch notifyadd` first.")
+        return
+
+    found_twitch_user_id = None
+    user_details = None
+    for tid, details_val in guild_stream_registrations[guild_id_str].items():
+        if details_val.get('login_name','').lower() == twitch_username_input:
+            found_twitch_user_id = tid
+            user_details = details_val
+            break
+
+    if not found_twitch_user_id or not user_details:
+        await interaction.followup.send(f"`{twitch_username}` not found in registrations for this server. Use `/twitch notifyadd` first.")
+        return
+
+    if len(message) > 140:
+        await interaction.followup.send("Your message is too long (max 140 characters).")
+        return
+
+    guild_stream_registrations[guild_id_str][found_twitch_user_id]['custom_live_message'] = message
+    save_json_data(guild_stream_registrations, STREAM_REGISTRATIONS_FILE, "stream registrations")
+
+    display_name = user_details.get('display_name', twitch_username)
+    await interaction.followup.send(f"Custom live notification message updated for `{display_name}`.")
+
 
 # Add this at the very bottom of the file
 if __name__ == "__main__":
