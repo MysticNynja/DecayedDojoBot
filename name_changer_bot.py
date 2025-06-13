@@ -394,14 +394,20 @@ async def check_twitch_streams_task():
                                                 if "👥 Current Viewers:" in line:
                                                     description_lines[i] = f"👥 Current Viewers: **{current_viewers}**"
                                             updated_embed.description = '\n'.join(description_lines)
-                                            
-                                            # Update the message with all changes
-                                            if DEBUG_MODE_ENABLED:
-                                                edited_message_content = "[DEBUG] Stream Updated" # Or use message.content to preserve original if it was debug
+
+                                            custom_message = details.get('custom_live_message')
+                                            if custom_message: # Check if not None and not empty
+                                                text_to_use = custom_message
                                             else:
-                                                edited_message_content = "@everyone"
-                                            await message.edit(content=edited_message_content, embed=updated_embed)
-                                            
+                                                text_to_use = stream_data.get('title', 'Live on Twitch!')
+
+                                            if DEBUG_MODE_ENABLED:
+                                                message_content = f"[DEBUG] {text_to_use}" # No @everyone ping in debug mode
+                                            else:
+                                                message_content = f"{text_to_use} @everyone" # Normal behavior with @everyone
+
+                                            await message.edit(content=message_content, embed=updated_embed)
+
                                             # Update stats
                                             if current_viewers > details.get('peak_viewers', 0):
                                                 details['peak_viewers'] = current_viewers
