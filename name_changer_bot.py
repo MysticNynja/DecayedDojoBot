@@ -350,8 +350,16 @@ async def check_twitch_streams_task():
                                         message = await discord_channel.fetch_message(details['last_message_id'])
                                         if message:
                                             updated_embed = message.embeds[0]
+
+                                            # Always update main image to latest stream preview
+                                            if stream_data.get('thumbnail_url'):
+                                                base_stream_preview_url = stream_data['thumbnail_url'].replace('{width}', '400').replace('{height}', '225')
+                                                final_stream_preview_url = f"{base_stream_preview_url}?t={int(time.time())}" # Cache-busting
+                                                updated_embed.set_image(url=final_stream_preview_url)
+                                            else:
+                                                updated_embed.set_image(url=None) # Clear image if no current preview URL
                                             
-                                            # Update stream title if changed
+                                            # Update stream title if changed (in embed description)
                                             current_title = stream_data.get('title', 'No Title')
                                             description_lines = (updated_embed.description or "").split('\n')
                                             if not description_lines[0].endswith(current_title):
@@ -370,10 +378,12 @@ async def check_twitch_streams_task():
                                                         description_lines[i] = f"🎮 Playing: **{current_game_name}**"
                                                 updated_embed.description = '\n'.join(description_lines)
                                                 
-                                                # Update game box art
+                                                # Update game box art as thumbnail
                                                 if game_info and game_info.get('box_art_url'):
-                                                    box_art_url = game_info['box_art_url'].replace('{width}', '285').replace('{height}', '380')
-                                                    updated_embed.set_image(url=box_art_url)
+                                                    new_box_art_url = game_info['box_art_url'].replace('{width}', '285').replace('{height}', '380')
+                                                    updated_embed.set_thumbnail(url=new_box_art_url)
+                                                else:
+                                                    updated_embed.set_thumbnail(url=None)
                                                 
                                                 details['last_game_id'] = current_game_id
                                                 details['last_game_name'] = current_game_name
