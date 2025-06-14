@@ -6,15 +6,20 @@ from unittest.mock import patch, MagicMock, AsyncMock
 # For `python -m unittest discover`, direct imports from the project root should work if cogs is a package
 from cogs.name_changer.name_changer_cog import NameChangerCog
 
-class TestNameChangerCog(unittest.TestCase):
-    def setUp(self):
+class TestNameChangerCog(unittest.IsolatedAsyncioTestCase): # Changed TestCase to IsolatedAsyncioTestCase
+    async def asyncSetUp(self): # Renamed setUp to asyncSetUp and made it async
         # Mock the bot object that the Cog's __init__ expects
         self.mock_bot = MagicMock()
         # If SERVER_ID and USER_ID are still read from os.getenv in cog's module scope,
         # we might need to patch os.getenv for those specific keys during test setup
         # For now, assuming they are handled or not critical for these unit tests' focus
-        with patch('os.getenv', return_value="12345"): # Mocking env vars for cog init
-             self.cog = NameChangerCog(self.mock_bot)
+        # Patching os.getenv for the duration of the setup
+        self.getenv_patcher = patch('os.getenv', return_value="12345")
+        self.mock_getenv = self.getenv_patcher.start()
+        self.cog = NameChangerCog(self.mock_bot)
+
+    async def asyncTearDown(self): # Added asyncTearDown
+        self.getenv_patcher.stop()
 
     @patch('aiohttp.ClientSession.get')
     async def test_get_random_male_name_success(self, mock_get):
@@ -35,8 +40,9 @@ class TestNameChangerCog(unittest.TestCase):
 
     @patch('aiohttp.ClientSession.get')
     async def test_get_random_male_name_api_failure(self, mock_get):
-        mock_response = AsyncMock()
-        mock_response.raise_for_status.side_effect = Exception("API Error")
+        mock_response = MagicMock()  # Changed from AsyncMock
+        mock_response.raise_for_status = MagicMock(side_effect=Exception("API Error")) # Explicitly MagicMock
+        mock_response.json = AsyncMock()  # json() is an async method
 
         mock_session_get_context_manager = AsyncMock()
         mock_session_get_context_manager.__aenter__.return_value = mock_response
