@@ -1,6 +1,7 @@
 import unittest
 from unittest.mock import patch, MagicMock, AsyncMock
 import time # For testing token expiry
+import os
 
 # For `python -m unittest discover`, direct imports from the project root should work
 from cogs.twitch_notifications.twitch_notifications_cog import TwitchNotificationsCog
@@ -83,8 +84,9 @@ class TestTwitchNotificationsCog(unittest.IsolatedAsyncioTestCase): # Using Isol
 
         user_info = await self.cog.get_twitch_user_info("testuser")
         self.assertIsNotNone(user_info)
-        self.assertEqual(user_info["id"], "12345")
-        self.assertEqual(user_info["login"], "testuser")
+        if user_info is not None:
+            self.assertEqual(user_info["id"], "12345")
+            self.assertEqual(user_info["login"], "testuser")
 
     @patch('cogs.twitch_notifications.twitch_notifications_cog.TwitchNotificationsCog.get_twitch_app_access_token', new_callable=AsyncMock)
     async def test_get_twitch_user_info_no_token(self, mock_get_token):

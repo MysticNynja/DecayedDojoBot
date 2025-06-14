@@ -54,7 +54,7 @@ class TestNameChangerCog(unittest.TestCase):
         mock_guild.get_member.return_value = mock_member
 
         # Patch self.bot.get_guild that is used inside perform_nickname_change
-        self.cog.bot.get_guild.return_value = mock_guild
+        self.cog.bot.get_guild = MagicMock(return_value=mock_guild)
 
         # SERVER_ID and USER_ID are accessed from module level in the cog
         # We need to ensure they are valid or patch them if they cause issues
