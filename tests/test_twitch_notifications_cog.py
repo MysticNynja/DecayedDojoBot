@@ -6,17 +6,28 @@ import os
 # For `python -m unittest discover`, direct imports from the project root should work
 from cogs.twitch_notifications.twitch_notifications_cog import TwitchNotificationsCog
 
-# Mock os.getenv for TWITCH_CLIENT_ID and TWITCH_CLIENT_SECRET at the module level for the cog
-@patch.dict(os.environ, {"TWITCH_CLIENT_ID": "test_client_id", "TWITCH_CLIENT_SECRET": "test_client_secret"})
-class TestTwitchNotificationsCog(unittest.IsolatedAsyncioTestCase): # Using IsolatedAsyncioTestCase for async tests
+# Using IsolatedAsyncioTestCase for async tests
+class TestTwitchNotificationsCog(unittest.IsolatedAsyncioTestCase):
 
-    def setUp(self):
+    async def asyncSetUp(self):
         self.mock_bot = MagicMock()
-        # Patch _load_json_data to avoid file I/O during tests
-        with patch('cogs.twitch_notifications.twitch_notifications_cog._load_json_data', return_value={}) as mock_load_json:
-            self.cog = TwitchNotificationsCog(self.mock_bot)
-            self.mock_load_json = mock_load_json
 
+        # Patch the module-level constants directly in the cog's module
+        self.client_id_patcher = patch('cogs.twitch_notifications.twitch_notifications_cog.TWITCH_CLIENT_ID', 'test_client_id')
+        self.client_secret_patcher = patch('cogs.twitch_notifications.twitch_notifications_cog.TWITCH_CLIENT_SECRET', 'test_client_secret')
+        self.mock_client_id = self.client_id_patcher.start()
+        self.mock_client_secret = self.client_secret_patcher.start()
+
+        # Patch _load_json_data to avoid file I/O during tests
+        self.load_json_patcher = patch('cogs.twitch_notifications.twitch_notifications_cog._load_json_data', return_value={})
+        self.mock_load_json = self.load_json_patcher.start()
+
+        self.cog = TwitchNotificationsCog(self.mock_bot)
+
+    async def asyncTearDown(self):
+        self.client_id_patcher.stop()
+        self.client_secret_patcher.stop()
+        self.load_json_patcher.stop()
 
     @patch('aiohttp.ClientSession.post')
     async def test_get_twitch_app_access_token_success(self, mock_post):

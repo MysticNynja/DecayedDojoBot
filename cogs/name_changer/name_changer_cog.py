@@ -19,12 +19,18 @@ USER_ID = int(USER_ID_STR) if USER_ID_STR else None
 class NameChangerCog(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
+        # Ensure SERVER_ID and USER_ID are available and valid
+        # This warning is still relevant at cog initialization time.
+        if SERVER_ID is None or USER_ID is None:
+            print("Warning: NameChangerCog loaded but SERVER_ID or USER_ID is not set. Nickname changes will fail if task is started.")
+
+    async def initialize_tasks(self):
+        # Start the task only if it's not already running.
         if not self.change_nickname_task.is_running():
             self.change_nickname_task.start()
-        # Ensure SERVER_ID and USER_ID are available and valid before starting the task
-        if SERVER_ID is None or USER_ID is None:
-            print("Warning: NameChangerCog loaded but SERVER_ID or USER_ID is not set. Nickname changes will fail.")
-
+            print("NameChangerCog: change_nickname_task started.")
+        else:
+            print("NameChangerCog: change_nickname_task was already running.")
 
     async def get_random_male_name(self):
         async with aiohttp.ClientSession() as session:
@@ -132,5 +138,7 @@ async def setup(bot: commands.Bot):
     if not os.getenv('DISCORD_SERVER_ID') or not os.getenv('DISCORD_USER_ID'):
         print("Error: Name Changer Cog not loaded. DISCORD_SERVER_ID or DISCORD_USER_ID not set in .env.")
     else:
-        await bot.add_cog(NameChangerCog(bot))
-        print("NameChangerCog added.")
+        cog = NameChangerCog(bot)
+        await bot.add_cog(cog)
+        await cog.initialize_tasks() # Initialize tasks after adding the cog
+        print("NameChangerCog added and tasks initialized.")

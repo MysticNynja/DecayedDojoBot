@@ -52,12 +52,18 @@ class TwitchNotificationsCog(commands.Cog):
         self.guild_settings = _load_json_data(SERVER_SETTINGS_FILE, "server settings")
         self.guild_stream_registrations = _load_json_data(STREAM_REGISTRATIONS_FILE, "stream registrations")
 
+        if not TWITCH_CLIENT_ID or not TWITCH_CLIENT_SECRET:
+            print("TwitchNotificationsCog: Warning - Twitch features will be DISABLED (missing client ID or secret). Task will not start.")
+
+    async def initialize_tasks(self):
         if TWITCH_CLIENT_ID and TWITCH_CLIENT_SECRET:
             if not self.check_twitch_streams_task.is_running():
                 self.check_twitch_streams_task.start()
-            print("TwitchNotificationsCog: Twitch stream checker task started.")
+                print("TwitchNotificationsCog: Twitch stream checker task started via initialize_tasks.")
+            else:
+                print("TwitchNotificationsCog: Twitch stream checker task was already running when initialize_tasks was called.")
         else:
-            print("TwitchNotificationsCog: Twitch features are DISABLED (missing client ID or secret).")
+            print("TwitchNotificationsCog: initialize_tasks skipped starting task, Twitch features are DISABLED (missing client ID or secret).")
 
     async def cog_unload(self): # Changed to async def
         self.check_twitch_streams_task.cancel()
@@ -522,5 +528,7 @@ async def setup(bot: commands.Bot):
         # bot.tree.add_command(TwitchNotificationsCog.twitch_admin_group)
         # bot.tree.add_command(TwitchNotificationsCog.twitch_user_group)
 
-        await bot.add_cog(TwitchNotificationsCog(bot))
-        print("TwitchNotificationsCog added.")
+        cog = TwitchNotificationsCog(bot)
+        await bot.add_cog(cog)
+        await cog.initialize_tasks() # Initialize tasks after adding the cog
+        print("TwitchNotificationsCog added and tasks initialized.")
