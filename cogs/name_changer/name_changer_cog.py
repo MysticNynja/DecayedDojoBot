@@ -124,7 +124,7 @@ class NameChangerCog(commands.Cog):
             await ctx.send(f"An error occurred: {error}", ephemeral=True)
             print(f"Error in changename_slash_command: {error}")
 
-    def cog_unload(self):
+    async def cog_unload(self):
         self.change_nickname_task.cancel()
 
 async def setup(bot: commands.Bot):
